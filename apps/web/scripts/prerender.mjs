@@ -11,7 +11,8 @@
 // Scrapers and crawlers get the truth; the SPA still boots and takes over for humans.
 // Also emits sitemap.xml + robots.txt, neither of which existed.
 //
-// Degrades safely: with no Supabase env (e.g. a local `pnpm build`), it logs and skips.
+// Degrades safely on a local build (no Supabase env → log and skip), but HARD FAILS on a real
+// deploy — see the note on bail() below.
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -26,7 +27,25 @@ const SITE = (process.env.VITE_SITE_URL || "").replace(/\/+$/, "");
 
 const BRAND = "360 Performance";
 
+// On a DEPLOY a missing variable must not pass silently. Without VITE_SITE_URL the build still
+// goes green while publishing index.html with UNREPLACED `%VITE_SITE_URL%` placeholders in
+// og:url / og:image, and zero prerendered pages — so every link shared on WhatsApp previews as
+// the generic homepage. That is precisely the bug this script exists to prevent, so a deploy
+// that cannot do its job fails loudly instead of shipping.
+//
+// Keyed on the deploy environment, deliberately NOT on generic `CI`: the GitHub verify job runs
+// `pnpm build` with no VITE_* vars at all, purely to typecheck/bundle and grep the output for
+// leaked keys. That build must keep skipping quietly.
+// Cloudflare Workers Builds sets WORKERS_CI; Cloudflare Pages sets CF_PAGES.
+const IS_DEPLOY = !!(process.env.WORKERS_CI || process.env.CF_PAGES);
+
 function bail(msg) {
+  if (IS_DEPLOY) {
+    console.error(`[prerender] FAILED — ${msg}`);
+    console.error("[prerender] Refusing to publish a deploy with broken share metadata.");
+    console.error("[prerender] Set the missing build variable in the Cloudflare dashboard and redeploy.");
+    process.exit(1);
+  }
   console.warn(`[prerender] SKIPPED — ${msg}`);
   process.exit(0);
 }
