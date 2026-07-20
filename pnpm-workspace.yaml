@@ -1,0 +1,12 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+allowBuilds:
+  '@tailwindcss/oxide': true
+  esbuild: true
+
+# Native postinstall builds pnpm must run (vite/tailwind toolchain).
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - esbuild

@@ -1,0 +1,13 @@
+-- ===========================================================================
+-- 360 Performance — remove the live-FX subsystem (Phase 1 correction).
+-- The client never used a market rate — he gets the RMB->PKR rate from his vendor and
+-- enters it by hand per purchase (Phase 2 will formalize this as the per-PO frozen rate),
+-- so the automatic rate fetching/storage/scheduling is the wrong model and is removed.
+--
+-- BOUNDARY: RMB the CURRENCY stays — the CNY code, the "RMB" label, and the currencies
+-- table are UNTOUCHED. Only the live-rate MECHANISM goes: the exchange_rates table (its
+-- fx_read RLS policy drops with it). Nothing else depends on it (the vendor-advances
+-- ledger never referenced it in SQL). The fx-refresh Edge Function and the fx-schedule
+-- pg_cron job are removed at the file level (they were never part of the migrations).
+-- ===========================================================================
+drop table exchange_rates;

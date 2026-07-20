@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+      # The client bundles must never contain a service-role key. Only VITE_* vars
+      # are inlined, so this catches a hardcoded key or a JWT carrying the
+      # service_role claim (base64 "service_role" == InNlcnZpY2Vfcm9sZSI).
+      - name: No service-role key in client bundles
+        run: |
+          if grep -rIE 'SERVICE_ROLE_KEY|InNlcnZpY2Vfcm9sZSI' apps/admin/dist apps/web/dist; then
+            echo "::error::service-role reference found in a client bundle"; exit 1
+          fi
+          echo "OK — no service-role reference in client bundles"
+
+  # Applies migrations to a fresh local Supabase and fails if the committed
+  # generated DB types are stale. Pinned CLI version for deterministic output.
+  db-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.95.4
+      - run: supabase start
+      - run: supabase gen types typescript --local > packages/supabase/src/types.ts
+      - name: Fail if generated DB types are not committed
+        run: git diff --exit-code --ignore-cr-at-eol -- packages/supabase/src/types.ts
+
+  # RLS NEGATIVE SUITE — proves the security guarantees at the database (anon zero
+  # read/write, B2 columns + financial views denied, role ladder, payments
+  # immutability, storage authz, stale-JWT). Fails CI on any loosening.
+  rls-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.95.4
+      - run: supabase start
+      - run: pnpm --filter @360/rls-tests test:rls
+
+  # Block service-role keys / secrets from entering source. Local Supabase demo
+  # keys are allowlisted in .gitleaks.toml (public, non-secret fixtures).
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_CONFIG: .gitleaks.toml

@@ -1,0 +1,43 @@
+node_modules/
+dist/
+build/
+coverage/
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+*.tsbuildinfo
+.vite/
+
+# Local AI-assistant config/instructions — never part of the published tree.
+.claude/
+CLAUDE.md
+
+# npm lockfile: this is a pnpm workspace (see packageManager in package.json).
+# A stray package-lock.json desyncs installs.
+package-lock.json
+
+# Commercial source data + internal working notes. Real customer, investor and
+# pricing information lives here — keep it out of the repository.
+client_files/
+supabase/seed-source/
+
+# One-off generators for the committed supabase/seed.sql. They read the pricing
+# workbook above, which is deliberately not published, so they cannot run from a
+# clone — the generated seed.sql is what the repository ships.
+scripts/seed/
+
+# Internal planning notes and pre-migration leftovers. These stay on the maintainer's
+# machine; listing them here stops a stray `git add -A` from resurrecting them.
+# Delete a line if you ever want that file tracked again.
+MIGRATION_PLAN.md
+CLOSURE_LEDGER.md
+CLOUD_CUTOVER.md
+COMPLETENESS_BATCH.md
+VENDOR_ADVANCES_SPEC.md
+apps/*/plans/
+apps/*/guidelines/
+apps/*/src/imports/
+apps/*/README.md

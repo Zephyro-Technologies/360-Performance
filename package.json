@@ -1,0 +1,31 @@
+{
+  "name": "360-performance",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@11.0.8",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:admin": "pnpm --filter @360/admin dev",
+    "dev:web": "pnpm --filter @360/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "tsc --noEmit -p apps/admin/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p packages/lib/tsconfig.json && tsc --noEmit -p packages/supabase/tsconfig.json",
+    "lint": "eslint .",
+    "test": "pnpm -r test",
+    "ci": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.15.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "eslint": "^9.15.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "exceljs": "^4.4.0",
+    "globals": "^15.12.0",
+    "sharp": "^0.35.2",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.15.0"
+  }
+}

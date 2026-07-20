@@ -1,0 +1,229 @@
+// Customer delivery costs — a ledger of last-mile courier bills to send orders to customers.
+// Each entry has an owed→paid state (so "payments owed" to couriers is visible) and can be
+// backdated for late bills. Reduces profit (operating expense). Local/inbound shipping is NOT
+// here — that stays in product landed cost. Lives in Data Management → Delivery.
+import { useEffect, useState } from "react";
+import { Check, Pencil, Plus, Trash2, Undo2, Search } from "lucide-react";
+import { toast } from "sonner";
+import {
+  useDeliveries,
+  useSaveDelivery,
+  useDeleteDelivery,
+  useSetDeliveryPaid,
+  type DeliveryRow,
+  type DeliveryInput,
+} from "../../data/deliveries";
+import { useOrders } from "../../data/orders";
+import { useAuth } from "../../data/auth";
+import { formatPKR, formatDate } from "@360/lib/format";
+import { cn } from "@360/ui/utils";
+import { Button } from "@360/ui/button";
+import { Input } from "@360/ui/input";
+import { Label } from "@360/ui/label";
+import { Textarea } from "@360/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@360/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@360/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@360/ui/select";
+import { useTableSort, SortHead } from "../common/useTableSort";
+
+function today() { return new Date().toISOString().slice(0, 10); }
+
+export function DeliveriesManager() {
+  const deliveriesQ = useDeliveries();
+  const del = useDeleteDelivery();
+  const setPaid = useSetDeliveryPaid();
+  const { can } = useAuth();
+  const [edit, setEdit] = useState<DeliveryRow | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const [q, setQ] = useState("");
+  const rows = deliveriesQ.data ?? [];
+  const owed = rows.filter((r) => !r.paid_on).reduce((s, r) => s + Number(r.amount_pkr), 0);
+  const term = q.trim().toLowerCase();
+  const filtered = rows.filter((r) => !term || (r.courier ?? "").toLowerCase().includes(term) || (r.orders?.order_no ?? "").toLowerCase().includes(term) || (r.note ?? "").toLowerCase().includes(term));
+  const sort = useTableSort(filtered, {
+    date: (r) => r.billed_on,
+    amount: (r) => r.amount_pkr,
+    courier: (r) => r.courier,
+    order: (r) => r.orders?.order_no ?? null,
+    status: (r) => (r.paid_on ? 1 : 0),
+    note: (r) => r.note,
+  }, "date", "desc");
+
+  function openNew() { setEdit(null); setOpen(true); }
+  function openEdit(r: DeliveryRow) { setEdit(r); setOpen(true); }
+
+  async function togglePaid(r: DeliveryRow) {
+    try {
+      await setPaid.mutateAsync({ id: r.id, paid_on: r.paid_on ? null : today() });
+      toast.success(r.paid_on ? "Marked as owed" : "Marked as paid");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update");
+    }
+  }
+  async function remove(r: DeliveryRow) {
+    if (!confirm(`Delete this delivery cost of ${formatPKR(r.amount_pkr)}?`)) return;
+    try {
+      await del.mutateAsync(r.id);
+      toast.success("Delivery cost deleted");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          Courier cost to deliver an order to a customer. Owed until you mark it paid. Late bills? Add it with its real date.
+          Owed to couriers: <span className="font-medium text-foreground tabular-nums">{formatPKR(owed)}</span>.
+        </p>
+        {can("edit") && (
+          <Button className="bg-[#cc0000] text-white hover:bg-[#a30000]" onClick={openNew}>
+            <Plus className="size-4" /> Record Delivery Cost
+          </Button>
+        )}
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input placeholder="Search by courier, order, or note…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
+      </div>
+
+      <div className="overflow-x-auto rounded-md border border-border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-black hover:bg-black">
+              <SortHead label="Date" sortKey="date" sort={sort} className="text-white" />
+              <SortHead label="Amount" sortKey="amount" sort={sort} className="text-white" />
+              <SortHead label="Courier" sortKey="courier" sort={sort} className="text-white" />
+              <SortHead label="Order" sortKey="order" sort={sort} className="text-white" />
+              <SortHead label="Status" sortKey="status" sort={sort} className="text-white" />
+              <SortHead label="Note" sortKey="note" sort={sort} className="text-white" />
+              <TableHead className="text-white w-20"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sort.sorted.map((r) => (
+              <TableRow key={r.id}>
+                <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(r.billed_on)}</TableCell>
+                <TableCell className="tabular-nums text-[#cc0000]">{formatPKR(r.amount_pkr)}</TableCell>
+                <TableCell className="text-muted-foreground">{r.courier ?? "—"}</TableCell>
+                <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">{r.orders?.order_no ?? "—"}</TableCell>
+                <TableCell>
+                  <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium", r.paid_on ? "border-green-200 bg-green-50 text-green-700" : "border-amber-200 bg-amber-50 text-amber-700")}>
+                    {r.paid_on ? "Paid" : "Owed"}
+                  </span>
+                </TableCell>
+                <TableCell className="max-w-xs truncate text-muted-foreground">{r.note}</TableCell>
+                <TableCell>
+                  {can("edit") && (
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="size-8" title={r.paid_on ? "Mark as owed" : "Mark as paid"} onClick={() => togglePaid(r)}>
+                        {r.paid_on ? <Undo2 className="size-4 text-muted-foreground" /> : <Check className="size-4 text-green-600" />}
+                      </Button>
+                      <Button variant="ghost" size="icon" className="size-8" onClick={() => openEdit(r)}><Pencil className="size-4" /></Button>
+                      {can("delete") && <Button variant="ghost" size="icon" className="size-8" onClick={() => remove(r)}><Trash2 className="size-4 text-[#cc0000]" /></Button>}
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {deliveriesQ.isLoading && <p className="p-6 text-center text-muted-foreground">Loading…</p>}
+        {deliveriesQ.isError && <p className="p-6 text-center text-[#cc0000]">{(deliveriesQ.error as Error).message}</p>}
+        {!deliveriesQ.isLoading && rows.length === 0 && <p className="p-6 text-center text-muted-foreground">No delivery costs logged yet.</p>}
+      </div>
+
+      <DeliveryDialog delivery={edit} open={open} onOpenChange={setOpen} />
+    </div>
+  );
+}
+
+function DeliveryDialog({ delivery, open, onOpenChange }: { delivery: DeliveryRow | null; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const save = useSaveDelivery();
+  const ordersQ = useOrders();
+  const [amount, setAmount] = useState("");
+  const [billedOn, setBilledOn] = useState("");
+  const [courier, setCourier] = useState("");
+  const [orderId, setOrderId] = useState("");
+  const [note, setNote] = useState("");
+  const [paid, setPaid] = useState(false);
+  const [key, setKey] = useState(0);
+
+  // Reset the form to the row being edited (or blank) whenever the dialog opens. Must be an effect,
+  // not the Dialog's onOpenChange: the parent opens the dialog by flipping `open`, and Radix fires
+  // onOpenChange only on user-driven close events — so a change handler never runs on open, and the
+  // form would keep (and save) the previously-typed values against this row.
+  useEffect(() => {
+    if (!open) return;
+    setAmount(delivery ? String(delivery.amount_pkr) : "");
+    setBilledOn(delivery?.billed_on ?? "");
+    setCourier(delivery?.courier ?? "");
+    setOrderId(delivery?.order_id ?? "");
+    setNote(delivery?.note ?? "");
+    setPaid(!!delivery?.paid_on);
+    setKey((k) => k + 1);
+  }, [delivery, open]);
+
+  async function submit() {
+    const input: DeliveryInput = {
+      amount_pkr: Number(amount),
+      billed_on: billedOn || today(),
+      // preserve the original paid date when editing; otherwise stamp today if paid
+      paid_on: paid ? (delivery?.paid_on ?? today()) : null,
+      order_id: orderId || null,
+      courier: courier.trim() || null,
+      note: note.trim() || null,
+    };
+    try {
+      await save.mutateAsync({ id: delivery?.id, input });
+      toast.success(delivery ? "Delivery cost updated" : "Delivery cost recorded");
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save delivery cost");
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md" key={key}>
+        <DialogHeader>
+          <DialogTitle>{delivery ? "Edit delivery cost" : "Record delivery cost"}</DialogTitle>
+          <DialogDescription>Courier cost to send an order to a customer. Reduces profit; owed until marked paid.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2"><Label>Amount (PKR)</Label><Input type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" /></div>
+            <div className="space-y-2"><Label>Bill date</Label><Input type="date" value={billedOn} onChange={(e) => setBilledOn(e.target.value)} /></div>
+          </div>
+          <div className="space-y-2"><Label>Courier <span className="text-muted-foreground">(optional)</span></Label><Input value={courier} onChange={(e) => setCourier(e.target.value)} placeholder="e.g. TCS, Leopard" /></div>
+          <div className="space-y-2">
+            <Label>Order <span className="text-muted-foreground">(optional)</span></Label>
+            <Select value={orderId || "none"} onValueChange={(v) => setOrderId(v === "none" ? "" : v)}>
+              <SelectTrigger aria-label="Order"><SelectValue placeholder="Link an order" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No linked order</SelectItem>
+                {(ordersQ.data ?? []).map((o) => (
+                  <SelectItem key={o.id} value={o.id}>{o.order_no} · {o.customers?.name ?? "—"}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2"><Label>Note <span className="text-muted-foreground">(optional)</span></Label><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. COD return leg" /></div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} className="size-4 accent-[#cc0000]" />
+            Already paid to the courier
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button className="bg-[#cc0000] text-white hover:bg-[#a30000]" onClick={submit} disabled={save.isPending || !amount}>
+            {save.isPending ? "Saving…" : delivery ? "Save changes" : "Record delivery cost"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -1,0 +1,19 @@
+title = "360 Performance gitleaks config"
+
+[extend]
+useDefault = true
+
+# The standard LOCAL Supabase demo JWTs (iss=supabase-demo) are public, well-known
+# fixtures — NOT production secrets. They appear in the RLS integration suite and in
+# .env.example. Production keys live only in CI secrets / the host env and are never
+# committed. Allowlist the demo-key shape and those fixture paths so the scan stays
+# meaningful (a real leaked key would not carry the supabase-demo issuer).
+[allowlist]
+description = "Local Supabase demo JWTs + example env (public, non-secret)"
+regexes = [
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJpc3MiOiJzdXBhYmFzZS1kZW1v[A-Za-z0-9_.\-]+''',
+]
+paths = [
+  '''packages/rls-tests/src/rls\.test\.ts''',
+  '''.*\.env\.example$''',
+]

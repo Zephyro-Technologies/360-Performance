@@ -1,0 +1,24 @@
+{
+  // Cloudflare Worker serving the prebuilt storefront as static assets.
+  // Assets-only: there is no Worker script, so `main` is intentionally absent.
+  "name": "360-performance-web",
+  "compatibility_date": "2026-07-21",
+
+  "assets": {
+    // Vite's build output. `pnpm --filter @360/web build` runs `vite build` and then the
+    // SEO prerender, which writes product/<slug>/index.html and blog/<slug>/index.html
+    // in here — those must keep being served as themselves.
+    "directory": "./dist",
+
+    // SPA fallback, replacing Vercel's `rewrites: /(.*) -> /index.html`.
+    //
+    // This is a FALLBACK ONLY: the asset router looks for a matching file first and only
+    // serves index.html on a genuine miss, so the prerendered pages above still win.
+    //
+    // Do NOT express this as `/* /index.html 200` in a _redirects file instead —
+    // Cloudflare applies redirects BEFORE checking whether an asset matches, so a
+    // catch-all rewrite would clobber every prerendered product and blog page and
+    // silently destroy the SEO those files exist for.
+    "not_found_handling": "single-page-application"
+  }
+}

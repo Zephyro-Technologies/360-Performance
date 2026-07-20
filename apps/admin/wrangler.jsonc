@@ -1,0 +1,15 @@
+{
+  // Cloudflare Worker serving the prebuilt dashboard as static assets.
+  // Assets-only: there is no Worker script, so `main` is intentionally absent.
+  "name": "360-performance-admin",
+  "compatibility_date": "2026-07-21",
+
+  "assets": {
+    "directory": "./dist",
+
+    // SPA fallback, replacing Vercel's `rewrites: /(.*) -> /index.html`. The dashboard is
+    // a pure client-side SPA (React Router), so every unmatched path must return the
+    // shell. Fallback-only: real files are still served as themselves.
+    "not_found_handling": "single-page-application"
+  }
+}

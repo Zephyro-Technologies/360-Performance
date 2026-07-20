@@ -1,0 +1,22 @@
+# Security + caching headers for the public storefront.
+#
+# Cloudflare Workers static assets parses this file natively (same format Pages used).
+# Vite copies public/ into dist/, which is the directory the Worker serves, so this file
+# ships automatically. It is the single source of truth — there is no host config to keep
+# in sync any more.
+#
+# CAREFUL: `/*` also matches /assets/*, and Cloudflare COMMA-JOINS a duplicated header
+# across every matching block. So any given header is declared in exactly ONE block —
+# note Cache-Control appears only under /assets/*, never under /*.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' https://hbfwuuexbizhxetstgcz.supabase.co; font-src 'self' data:; connect-src 'self' https://hbfwuuexbizhxetstgcz.supabase.co wss://hbfwuuexbizhxetstgcz.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+
+# Vite emits content-hashed filenames here, so a new build produces new names and these
+# can be cached indefinitely. Without this they inherit the platform default of
+# `public, max-age=0, must-revalidate` and get revalidated on every visit.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

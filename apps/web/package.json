@@ -1,0 +1,34 @@
+{
+  "name": "@360/web",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "build": "vite build && node scripts/prerender.mjs",
+    "dev": "vite",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@360/lib": "workspace:*",
+    "@360/supabase": "workspace:*",
+    "@360/ui": "workspace:*",
+    "@supabase/supabase-js": "^2.45.4",
+    "lucide-react": "0.487.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router": "7.13.0",
+    "sonner": "2.0.3",
+    "tw-animate-css": "1.3.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.1.12",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.1.0",
+    "@vitejs/plugin-react": "4.7.0",
+    "jsdom": "^25.0.1",
+    "tailwindcss": "4.1.12",
+    "vite": "6.3.5",
+    "vitest": "^2.1.8"
+  }
+}
