@@ -164,7 +164,7 @@ export function Navbar() {
             onClick={() => setSearchOpen((o) => !o)}
             aria-label="Search"
             aria-expanded={searchOpen}
-            className="rounded-md p-2 text-white transition-colors hover:bg-white/10"
+            className="inline-flex size-11 items-center justify-center rounded-md text-white transition-colors hover:bg-white/10"
           >
             {searchOpen ? <X className="size-5" /> : <SearchIcon className="size-5" />}
           </button>

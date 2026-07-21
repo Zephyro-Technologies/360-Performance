@@ -310,7 +310,8 @@ export function Catalogue() {
             </div>
           ) : loading ? (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
+              {/* Match PAGE_SIZE — six placeholders for a nine-item page grew the grid by a row. */}
+              {Array.from({ length: PAGE_SIZE }).map((_, i) => (
                 <ProductCardSkeleton key={i} />
               ))}
             </div>
@@ -351,7 +352,7 @@ export function Catalogue() {
                         type="button"
                         onClick={() => update({ page: String(p) }, false)}
                         aria-current={p === result.page ? "page" : undefined}
-                        className={`size-9 rounded-md font-heading text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+                        className={`size-11 rounded-md font-heading text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                           p === result.page
                             ? "bg-brand text-white"
                             : "border border-border text-foreground hover:bg-accent"
@@ -428,7 +429,7 @@ function FilterChip({
         type="button"
         onClick={onRemove}
         aria-label={`Remove filter: ${label}`}
-        className="-mr-1 rounded-sm p-0.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        className="-mr-1 rounded-sm p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
       >
         <X className="size-3.5" />
       </button>

@@ -65,7 +65,7 @@ export function Footer() {
               target="_blank"
               rel="noreferrer"
               aria-label="Instagram"
-              className="rounded-full border border-white/20 p-2 transition-colors hover:border-brand hover:bg-brand"
+              className="inline-flex size-11 items-center justify-center rounded-full border border-white/20 transition-colors hover:border-brand hover:bg-brand"
             >
               <Instagram className="size-4" />
             </a>
@@ -74,7 +74,7 @@ export function Footer() {
               target="_blank"
               rel="noreferrer"
               aria-label="Facebook"
-              className="rounded-full border border-white/20 p-2 transition-colors hover:border-brand hover:bg-brand"
+              className="inline-flex size-11 items-center justify-center rounded-full border border-white/20 transition-colors hover:border-brand hover:bg-brand"
             >
               <Facebook className="size-4" />
             </a>

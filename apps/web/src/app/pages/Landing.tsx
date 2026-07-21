@@ -108,6 +108,22 @@ function SectionTitle({
   );
 }
 
+/**
+ * Placeholder shaped like a real ProductCard (square image + text block). Flat h-80 blocks were
+ * ~126px shorter than the cards that replaced them, so every grid jumped downward on load.
+ */
+function CardSkeleton({ dark = false, aspect = "aspect-square" }: { dark?: boolean; aspect?: string }) {
+  const tone = dark ? "bg-white/10" : "";
+  return (
+    <div className="flex flex-col gap-3">
+      <Skeleton className={`${aspect} w-full ${tone}`} />
+      <Skeleton className={`h-3 w-1/3 ${tone}`} />
+      <Skeleton className={`h-4 w-3/4 ${tone}`} />
+      <Skeleton className={`h-4 w-1/2 ${tone}`} />
+    </div>
+  );
+}
+
 export function Landing() {
   const [featured, setFeatured] = useState<Product[] | null>(null);
   const [testimonials, setTestimonials] = useState<Testimonial[] | null>(null);
@@ -184,7 +200,9 @@ export function Landing() {
       {/* ──────────────────────────────────────────────────────────────
           HERO — full-viewport, centered, parts-collage backdrop
          ──────────────────────────────────────────────────────────────*/}
-      <section className="relative isolate flex min-h-[calc(100svh-4rem)] flex-col overflow-hidden bg-black text-white">
+      {/* Subtracts the navbar AND the announcement bar (published as --announcement-h, 0 when
+          hidden), so the quick-stats row stays at the fold whether or not one is live. */}
+      <section className="relative isolate flex min-h-[calc(100svh-4rem-var(--announcement-h,0px))] flex-col overflow-hidden bg-black text-white">
         <ImageWithFallback
           src={HERO_IMG}
           alt=""
@@ -354,7 +372,7 @@ export function Landing() {
                       <ProductCard key={p.id} product={p} tone="dark" />
                     ))
                   : Array.from({ length: 4 }).map((_, i) => (
-                      <Skeleton key={i} className="h-80 w-full bg-white/10" />
+                      <CardSkeleton key={i} dark />
                     ))}
               </div>
             )}
@@ -400,7 +418,7 @@ export function Landing() {
           ) : collectionItems === null ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
               {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-80 w-full" />
+                <CardSkeleton key={i} />
               ))}
             </div>
           ) : collectionItems.length > 0 ? (
@@ -531,7 +549,7 @@ export function Landing() {
                   </Link>
                 ))
               : Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-64 w-full" />
+                  <CardSkeleton key={i} aspect="aspect-[4/3]" />
                 ))}
           </div>
         </div>

@@ -93,7 +93,7 @@ export function CategoryNav({
                       key={leaf.id}
                       type="button"
                       onClick={() => onSelect(leaf.slug)}
-                      className={`${item} px-2 py-1.5 text-[13px] ${
+                      className={`${item} px-2 py-2.5 text-[13px] ${
                         category === leaf.slug
                           ? "font-medium text-brand"
                           : "text-muted-foreground hover:bg-accent hover:text-foreground"
