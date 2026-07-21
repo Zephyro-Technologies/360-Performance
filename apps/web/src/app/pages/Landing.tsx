@@ -167,7 +167,10 @@ export function Landing() {
             className="mt-6 font-heading font-bold uppercase leading-[1.05] tracking-tight text-white"
             style={{ fontSize: "clamp(2rem, 5.5vw, 4.25rem)" }}
           >
-            Pakistan's Trusted
+            {/* The {" "} is load-bearing: <br> is not whitespace, so without it the
+                accessible name and the text search engines index read
+                "Pakistan's TrustedMotorsports Store". */}
+            Pakistan's Trusted{" "}
             <br />
             Motorsports Store
           </h1>

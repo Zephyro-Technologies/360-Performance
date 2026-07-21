@@ -73,9 +73,12 @@ export function ProductDetail() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Rich-results structured data — products here are already published + priced. */}
+      {/* Rich-results structured data — products here are already published + priced.
+          The offer URL comes from productUrl() (i.e. VITE_SITE_URL), the same source head.ts
+          builds the canonical from; window.location would disagree with it on a preview
+          deploy or a www/apex mismatch. */}
       {product.pricePKR > 0 && (
-        <JsonLd data={productJsonLd(product, window.location.origin + window.location.pathname)} />
+        <JsonLd data={productJsonLd(product, productUrl(product.slug))} />
       )}
       <Breadcrumbs
         items={[

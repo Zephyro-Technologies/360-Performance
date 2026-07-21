@@ -104,7 +104,14 @@ export function SearchBar({
                         {p.name}
                       </span>
                       <span className="block font-body text-xs text-muted-foreground">
-                        {formatPKR(p.pricePKR)}
+                        {/* Quote the price the customer actually sees, matching ProductCard,
+                            ProductDetail and the WhatsApp order message. Showing pricePKR here
+                            advertised the higher, struck-through price on the search path. */}
+                        {formatPKR(
+                          p.salePricePKR != null && p.salePricePKR < p.pricePKR
+                            ? p.salePricePKR
+                            : p.pricePKR,
+                        )}
                       </span>
                     </span>
                   </button>

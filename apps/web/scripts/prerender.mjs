@@ -102,7 +102,12 @@ function render(shell, { title, description, url, image, jsonLd, robots }) {
 
   const extra =
     `\n    <link rel="canonical" href="${esc(url)}" />` +
-    (jsonLd ? `\n    <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : "");
+    // Escape "<" exactly as components/JsonLd.tsx does, so an author-written product name or
+    // description containing "</script>" cannot terminate the head of the prerendered page —
+    // the one file social scrapers and crawlers actually read.
+    (jsonLd
+      ? `\n    <script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, "\\u003c")}</script>`
+      : "");
   return html.replace("</head>", `${extra}\n  </head>`);
 }
 
@@ -120,9 +125,13 @@ const products = await q(
   "select=slug,name,brand,sku,mpn,price_pkr,sale_price_pkr,images,short_description,meta_description,availability,created_at",
 );
 
+// Keyed on the RAW DB enum (products_public.availability), unlike lib/jsonld.ts which maps the
+// hyphenated view-model values. `made_to_order` is the column DEFAULT, so omitting it here made
+// most products advertise InStock to crawlers while the page itself said "Made to order".
 const AVAIL = {
   in_stock: "https://schema.org/InStock",
   low_stock: "https://schema.org/LimitedAvailability",
+  made_to_order: "https://schema.org/MadeToOrder",
   out_of_stock: "https://schema.org/OutOfStock",
 };
 
@@ -154,7 +163,9 @@ for (const p of products) {
           url,
           priceCurrency: "PKR",
           price: String(price),
-          availability: AVAIL[p.availability] ?? "https://schema.org/InStock",
+          // Fallback matches data/api.ts, which also defaults an unknown value to made-to-order.
+          // Claiming InStock for something we cannot classify is the expensive way to be wrong.
+          availability: AVAIL[p.availability] ?? "https://schema.org/MadeToOrder",
         },
       },
     }),
