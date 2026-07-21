@@ -30,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@360/ui/table";
+import { useConfirm } from "../components/common/confirm";
 
 const AVAIL_LABEL: Record<string, string> = {
   in_stock: "In Stock",
@@ -79,6 +80,8 @@ export function ProductDetail() {
   const historyQ = useProductOrderHistory(id);
   const purchasesQ = useProductPurchases(id);
   const lowStockDefaultQ = useLowStockDefault();
+  // Above the loading/error early-returns: a hook must run on every render.
+  const confirm = useConfirm();
   const del = useDeleteProduct();
   const { can } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
@@ -113,7 +116,7 @@ export function ProductDetail() {
   const history = historyQ.data ?? [];
 
   async function remove() {
-    if (!confirm(`Delete ${p.name}? This cannot be undone.`)) return;
+    if (!(await confirm({ title: `Delete ${p.name}?`, description: "This cannot be undone.", destructive: true }))) return;
     try {
       await del.mutateAsync(p.id);
       toast.success("Product deleted");

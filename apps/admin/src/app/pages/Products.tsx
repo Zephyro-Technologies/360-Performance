@@ -53,6 +53,7 @@ import { useTableSort, SortHead } from "../components/common/useTableSort";
 import { OneoffProductsTable } from "../components/products/OneoffProductsTable";
 import { OneoffProductDialog } from "../components/products/OneoffProductDialog";
 import { useOneoffProducts, type OneoffProduct } from "../data/oneoffProducts";
+import { useConfirm } from "../components/common/confirm";
 
 type Owner = "house" | "investor" | "oneoff";
 
@@ -216,8 +217,9 @@ export function Products() {
     setEditing(p);
     setDialogOpen(true);
   }
+  const confirm = useConfirm();
   async function remove(p: ProductListItem) {
-    if (!confirm(`Delete ${p.name}?`)) return;
+    if (!(await confirm({ title: `Delete ${p.name}?`, destructive: true }))) return;
     try {
       await del.mutateAsync(p.id);
       toast.success("Product deleted");

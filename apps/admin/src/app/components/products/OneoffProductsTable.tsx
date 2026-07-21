@@ -9,6 +9,7 @@ import { formatPKR } from "@360/lib/format";
 import { Button } from "@360/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@360/ui/table";
 import { useTableSort, SortHead } from "../common/useTableSort";
+import { useConfirm } from "../common/confirm";
 
 export function OneoffProductsTable({ query, onEdit }: { query: string; onEdit: (p: OneoffProduct) => void }) {
   const listQ = useOneoffProducts();
@@ -36,8 +37,10 @@ export function OneoffProductsTable({ query, onEdit }: { query: string; onEdit: 
     "asc",
   );
 
+  const confirm = useConfirm();
+
   async function remove(p: OneoffProduct) {
-    if (!confirm(`Delete ${p.name}? This won't affect orders already using it.`)) return;
+    if (!(await confirm({ title: `Delete ${p.name}?`, description: "This won't affect orders already using it.", destructive: true }))) return;
     try { await del.mutateAsync(p.id); toast.success("Deleted"); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Could not delete"); }
   }

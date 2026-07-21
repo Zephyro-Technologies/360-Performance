@@ -56,17 +56,28 @@ export function useOrderCosts(orderId: string | null) {
   return useQuery({
     queryKey: ["order-costs", orderId],
     enabled: !!orderId,
-    queryFn: async (): Promise<{ cogs_pkr: number }> => {
-      if (!orderId) return { cogs_pkr: 0 };
-      const [cat, oneoff] = await Promise.all([
+    queryFn: async (): Promise<{ cogs_pkr: number; replacement_cost_pkr: number }> => {
+      if (!orderId) return { cogs_pkr: 0, replacement_cost_pkr: 0 };
+      const [cat, oneoff, repl] = await Promise.all([
         supabase.from("order_cogs").select("cogs_pkr").eq("order_id", orderId),
         supabase.from("order_items").select("qty_delivered, landed_cost_pkr").eq("order_id", orderId).is("product_id", null),
+        // An at-fault replacement re-ship draws kind='replacement', NOT 'sale' — so order_cogs
+        // (sale-only) reports 0 and the order would read as having cost us nothing. It didn't:
+        // the house bears the landed cost of the units sent out. Surfaced separately so it is
+        // never confused with COGS against revenue — a replacement earns no revenue at all.
+        supabase
+          .from("stock_movements")
+          .select("cogs_pkr_snap, order_items!inner(order_id)")
+          .eq("kind", "replacement")
+          .eq("order_items.order_id", orderId),
       ]);
       if (cat.error) throw new Error(friendlyError(cat.error));
       if (oneoff.error) throw new Error(friendlyError(oneoff.error));
+      if (repl.error) throw new Error(friendlyError(repl.error));
       const catCogs = (cat.data ?? []).reduce((s, r) => s + Number(r.cogs_pkr ?? 0), 0);
       const ooCogs = (oneoff.data ?? []).reduce((s, r) => s + (r.qty_delivered ?? 0) * Number(r.landed_cost_pkr ?? 0), 0);
-      return { cogs_pkr: catCogs + ooCogs };
+      const replCost = (repl.data ?? []).reduce((s, r) => s + Number(r.cogs_pkr_snap ?? 0), 0);
+      return { cogs_pkr: catCogs + ooCogs, replacement_cost_pkr: replCost };
     },
   });
 }

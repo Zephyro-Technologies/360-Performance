@@ -244,7 +244,7 @@ export function OrderDetailContent({ order, variant = "drawer", onNavigateAway }
 
           <section className="lg:col-span-2">
             <h4 className="mb-2">Costs &amp; profit</h4>
-            <OrderCosts orderId={orderId} total={order.total_pkr} billedTotal={billedTotal} />
+            <OrderCosts orderId={orderId} total={order.total_pkr} billedTotal={billedTotal} isReplacement={order.replaces_order_id != null} />
           </section>
 
           <section>
@@ -398,28 +398,57 @@ function InvoiceLink({ orderId, canEdit, cancelled }: { orderId: string; canEdit
 }
 
 // Order value vs realized cost of goods (drawn at delivery) → gross profit.
-function OrderCosts({ orderId, total, billedTotal }: { orderId: string; total: number; billedTotal: number | null }) {
+//
+// An at-fault REPLACEMENT re-ship is a different shape: its lines are priced at 0 (no revenue,
+// by design — record_correction, 090070) and the units go out as kind='replacement', so the
+// house bears their landed cost and there is no profit to make. Showing that order through the
+// normal value/COGS/profit lens would read "cost us nothing", so it gets its own labels.
+function OrderCosts({
+  orderId,
+  total,
+  billedTotal,
+  isReplacement,
+}: {
+  orderId: string;
+  total: number;
+  billedTotal: number | null;
+  isReplacement: boolean;
+}) {
   const q = useOrderCosts(orderId);
   const cogs = q.data?.cogs_pkr ?? 0;
-  const profit = total - cogs;
+  const borne = q.data?.replacement_cost_pkr ?? 0;
+  // A replacement can never profit: the only movement is cost out the door.
+  const profit = total - cogs - borne;
   return (
     <div className="grid grid-cols-3 gap-2">
       <div className="rounded-md border border-border bg-card px-3 py-2">
         <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Order value</p>
         <p className="text-sm font-bold tabular-nums">{formatPKR(total)}</p>
-        {/* Realized order value is frozen per delivered line, so a later invoice edit (e.g. a
-            discount) can leave the two apart. Surfaced rather than silently reconciled. */}
-        {billedTotal != null && Math.abs(billedTotal - total) >= 0.01 && (
-          <p className="text-[10px] font-medium text-amber-700">invoiced {formatPKR(billedTotal)}</p>
+        {isReplacement ? (
+          <p className="text-[10px] text-muted-foreground">free re-ship — no revenue</p>
+        ) : (
+          /* Realized order value is frozen per delivered line, so a later invoice edit (e.g. a
+             discount) can leave the two apart. Surfaced rather than silently reconciled. */
+          billedTotal != null && Math.abs(billedTotal - total) >= 0.01 && (
+            <p className="text-[10px] font-medium text-amber-700">invoiced {formatPKR(billedTotal)}</p>
+          )
         )}
       </div>
       <div className="rounded-md border border-border bg-card px-3 py-2">
-        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Cost of goods</p>
-        <p className="text-sm font-semibold tabular-nums text-muted-foreground">{q.isLoading ? "…" : formatPKR(cogs)}</p>
-        <p className="text-[10px] text-muted-foreground">realized on delivery</p>
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          {isReplacement ? "Cost we bear" : "Cost of goods"}
+        </p>
+        <p className="text-sm font-semibold tabular-nums text-muted-foreground">
+          {q.isLoading ? "…" : formatPKR(isReplacement ? borne : cogs)}
+        </p>
+        <p className="text-[10px] text-muted-foreground">
+          {isReplacement ? "at-fault — booked as an expense" : "realized on delivery"}
+        </p>
       </div>
       <div className="rounded-md border border-border bg-card px-3 py-2">
-        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Gross profit</p>
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          {isReplacement ? "Loss" : "Gross profit"}
+        </p>
         <p className="text-sm font-semibold tabular-nums text-[#cc0000]">{q.isLoading ? "…" : formatPKR(profit)}</p>
       </div>
     </div>

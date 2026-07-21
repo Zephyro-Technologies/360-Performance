@@ -4,7 +4,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "./supabase";
 import { friendlyError } from "./errors";
-import type { SheetCells } from "../components/invoicing/querySheetColumns";
+import type { Json } from "@360/supabase";
+import { toCustomColumns, type CustomColumnDef, type SheetCells } from "../components/invoicing/querySheetColumns";
+
+// A named interface has no implicit index signature, so it isn't assignable to the generated `Json`
+// type. Rebuilding each entry as a fresh object literal keeps the write type-checked field by field
+// (rather than casting the whole array through `unknown` and losing the check).
+const customColumnsToJson = (cols: CustomColumnDef[]): Json =>
+  cols.map((c) => ({ key: c.key, label: c.label, kind: c.kind }));
 
 export interface QuerySheetRow {
   id: string;
@@ -17,7 +24,8 @@ export interface QuerySheet {
   id: string;
   title: string;
   notes: string | null;
-  columns: string[]; // ordered column keys; empty ⇒ the client falls back to the full catalogue set
+  columns: string[]; // ordered column keys — this IS the layout; empty ⇒ fall back to the full set
+  custom_columns: CustomColumnDef[]; // operator-defined columns for this sheet
   created_at: string;
   updated_at: string;
 }
@@ -35,7 +43,7 @@ export function useQuerySheets() {
     queryFn: async (): Promise<(QuerySheet & { row_count: number })[]> => {
       const { data, error } = await supabase
         .from("query_sheets")
-        .select("id, title, notes, columns, created_at, updated_at, query_sheet_rows(count)")
+        .select("id, title, notes, columns, custom_columns, created_at, updated_at, query_sheet_rows(count)")
         .order("updated_at", { ascending: false });
       if (error) throw new Error(friendlyError(error));
       return (data ?? []).map((s) => {
@@ -45,6 +53,7 @@ export function useQuerySheets() {
           title: s.title,
           notes: s.notes,
           columns: toKeys(s.columns),
+          custom_columns: toCustomColumns(s.custom_columns),
           created_at: s.created_at,
           updated_at: s.updated_at,
           row_count: counts?.[0]?.count ?? 0,
@@ -62,7 +71,7 @@ export function useQuerySheet(id: string | null) {
       if (!id) return null;
       const { data, error } = await supabase
         .from("query_sheets")
-        .select("id, title, notes, columns, created_at, updated_at, query_sheet_rows(id, position, product_id, cells)")
+        .select("id, title, notes, columns, custom_columns, created_at, updated_at, query_sheet_rows(id, position, product_id, cells)")
         .eq("id", id)
         .maybeSingle();
       if (error) throw new Error(friendlyError(error));
@@ -73,6 +82,7 @@ export function useQuerySheet(id: string | null) {
         title: data.title,
         notes: data.notes,
         columns: toKeys(data.columns),
+        custom_columns: toCustomColumns(data.custom_columns),
         created_at: data.created_at,
         updated_at: data.updated_at,
         rows: rows
@@ -86,10 +96,10 @@ export function useQuerySheet(id: string | null) {
 export function useCreateQuerySheet() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ title, columns }: { title: string; columns: string[] }): Promise<string> => {
+    mutationFn: async ({ title, columns, custom_columns = [] }: { title: string; columns: string[]; custom_columns?: CustomColumnDef[] }): Promise<string> => {
       const { data, error } = await supabase
         .from("query_sheets")
-        .insert({ title: title.trim() || "Untitled query", columns })
+        .insert({ title: title.trim() || "Untitled query", columns, custom_columns: customColumnsToJson(custom_columns) })
         .select("id")
         .single();
       if (error) throw new Error(friendlyError(error));
@@ -102,8 +112,11 @@ export function useCreateQuerySheet() {
 export function useUpdateQuerySheet() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...patch }: { id: string; title?: string; notes?: string | null; columns?: string[] }) => {
-      const { error } = await supabase.from("query_sheets").update(patch).eq("id", id);
+    mutationFn: async ({ id, custom_columns, ...patch }: { id: string; title?: string; notes?: string | null; columns?: string[]; custom_columns?: CustomColumnDef[] }) => {
+      const { error } = await supabase
+        .from("query_sheets")
+        .update(custom_columns ? { ...patch, custom_columns: customColumnsToJson(custom_columns) } : patch)
+        .eq("id", id);
       if (error) throw new Error(friendlyError(error));
     },
     onSuccess: (_d, v) => {

@@ -25,6 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@360/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@360/ui/select";
 import { useTableSort, SortHead } from "../common/useTableSort";
+import { useConfirm } from "../common/confirm";
 
 export function RefundsManager() {
   const refundsQ = useRefunds();
@@ -36,8 +37,9 @@ export function RefundsManager() {
 
   function openNew() { setEdit(null); setOpen(true); }
   function openEdit(r: RefundRow) { setEdit(r); setOpen(true); }
+  const confirm = useConfirm();
   async function remove(r: RefundRow) {
-    if (!confirm(`Delete this refund of ${formatPKR(r.amount_pkr)}?`)) return;
+    if (!(await confirm({ title: `Delete this refund of ${formatPKR(r.amount_pkr)}?`, destructive: true }))) return;
     try {
       await del.mutateAsync(r.id);
       toast.success("Refund deleted");

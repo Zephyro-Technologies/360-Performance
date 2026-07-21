@@ -26,6 +26,7 @@ import { Textarea } from "@360/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@360/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@360/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@360/ui/select";
+import { useConfirm } from "../common/confirm";
 
 export function InvestorsPanel() {
   const pnlQ = usePnlSummary();
@@ -40,8 +41,10 @@ export function InvestorsPanel() {
   const totalOwed = owed.reduce((s, o) => s + o.owed_pkr, 0);
   const pnl = pnlQ.data;
 
+  const confirm = useConfirm();
+
   async function doReverse(p: InvestorPayout) {
-    if (!confirm(`Reverse this payout of ${formatPKR(p.amount_pkr)}? Posts a correcting entry.`)) return;
+    if (!(await confirm({ title: `Reverse this payout of ${formatPKR(p.amount_pkr)}?`, description: "Posts a correcting entry — the original payout stays in the ledger.", confirmLabel: "Reverse", destructive: true }))) return;
     try {
       await reverse.mutateAsync(p);
       toast.success("Payout reversed");

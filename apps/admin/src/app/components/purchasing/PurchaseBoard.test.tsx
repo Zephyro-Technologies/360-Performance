@@ -52,6 +52,7 @@ vi.mock("../../data/catalog", async (orig) => ({
 vi.mock("../../data/auth", () => ({ useAuth: () => ({ can: () => true }) }));
 
 import { PurchaseBoard } from "./PurchaseBoard";
+import { ConfirmProvider } from "../common/confirm";
 
 afterEach(() => {
   cleanup();
@@ -60,7 +61,7 @@ afterEach(() => {
 
 test("planned items only graduate with a product + vendor; a ready one fires, and POs show their money chip", async () => {
   const user = userEvent.setup({ pointerEventsCheck: 0 });
-  render(<MemoryRouter><PurchaseBoard /></MemoryRouter>);
+  render(<ConfirmProvider><MemoryRouter><PurchaseBoard /></MemoryRouter></ConfirmProvider>);
 
   expect(screen.getByText("Graduatable Item")).toBeTruthy();
   expect(screen.getByText("Free-text Research")).toBeTruthy();
@@ -81,7 +82,7 @@ test("planned items only graduate with a product + vendor; a ready one fires, an
 });
 
 test("arrival is never a status flip: a transit PO offers Receive, an arrived PO has no forward action", () => {
-  render(<MemoryRouter><PurchaseBoard /></MemoryRouter>);
+  render(<ConfirmProvider><MemoryRouter><PurchaseBoard /></MemoryRouter></ConfirmProvider>);
 
   // The transit card's forward action routes to receiving — there is no "advance to received".
   expect(screen.getByRole("button", { name: /receive PO-1/i })).toBeTruthy();
@@ -94,7 +95,7 @@ test("arrival is never a status flip: a transit PO offers Receive, an arrived PO
 
 test("search filter narrows the board to matching cards", async () => {
   const user = userEvent.setup({ pointerEventsCheck: 0 });
-  render(<MemoryRouter><PurchaseBoard /></MemoryRouter>);
+  render(<ConfirmProvider><MemoryRouter><PurchaseBoard /></MemoryRouter></ConfirmProvider>);
 
   await user.type(screen.getByPlaceholderText(/search PO/i), "Rui");
 

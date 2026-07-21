@@ -43,6 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@360/ui/select";
+import { useConfirm } from "../common/confirm";
 
 const METHODS: { value: PaymentMethod; label: string }[] = [
   { value: "bank_transfer", label: "Bank Transfer" },
@@ -249,6 +250,8 @@ export function InvoiceDetail({
     (invoice?.payments ?? []).filter((p) => p.kind === "reversal").map((p) => p.reverses_payment_id),
   );
 
+  const confirm = useConfirm();
+
   async function recordPayment() {
     if (!invoice) return;
     try {
@@ -262,7 +265,8 @@ export function InvoiceDetail({
   }
 
   async function reversePayment(p: InvoicePayment) {
-    if (!invoice || !confirm(`Reverse this ${formatPKR(p.amount_pkr)} payment?`)) return;
+    if (!invoice) return;
+    if (!(await confirm({ title: `Reverse this ${formatPKR(p.amount_pkr)} payment?`, description: "Posts a reversal entry — the original payment stays on the ledger.", confirmLabel: "Reverse", destructive: true }))) return;
     try {
       await reverse.mutateAsync({ invoice_id: invoice.id, payment_id: p.id, amount_pkr: p.amount_pkr, method: p.method });
       toast.success("Payment reversed");
@@ -272,7 +276,8 @@ export function InvoiceDetail({
   }
 
   async function doVoid() {
-    if (!invoice || !confirm("Void this invoice? It will be marked void.")) return;
+    if (!invoice) return;
+    if (!(await confirm({ title: "Void this invoice?", description: "It will be marked void. This cannot be undone.", confirmLabel: "Void invoice", destructive: true }))) return;
     try {
       await voidInvoice.mutateAsync(invoice.id);
       toast.success("Invoice voided");

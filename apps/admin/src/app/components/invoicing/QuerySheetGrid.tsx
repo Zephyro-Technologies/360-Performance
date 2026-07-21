@@ -5,7 +5,7 @@
 // Editing model: typing updates local draft state only; the row is persisted on blur (one UPDATE
 // per row). That keeps the derived columns instant while you type without a write per keystroke.
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Trash2, PackageSearch, PackagePlus } from "lucide-react";
+import { Plus, Trash2, PackageSearch, PackagePlus, Maximize2, Minimize2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatPKR } from "@360/lib/format";
 import { cn } from "@360/ui/utils";
@@ -16,9 +16,10 @@ import {
   useAddQuerySheetRows,
   useUpdateQuerySheetRow,
   useDeleteQuerySheetRow,
+  useUpdateQuerySheet,
   type QuerySheetDetail,
 } from "../../data/querySheets";
-import { resolveColumns, cellValue, columnTotal, type SheetCells, type SheetCol } from "./querySheetColumns";
+import { resolveColumns, cellValue, cellKeyOf, columnTotal, type SheetCells, type SheetCol } from "./querySheetColumns";
 
 const alignCls = (a: SheetCol["align"]) => (a === "right" ? "text-right" : a === "center" ? "text-center" : "");
 
@@ -39,10 +40,57 @@ export function QuerySheetGrid({ sheet, editable }: { sheet: QuerySheetDetail; e
   const productsQ = useProducts();
   const oneoffQ = useOneoffProducts();
   const suppliersQ = useSuppliers();
+  const updateSheet = useUpdateQuerySheet();
   const [picking, setPicking] = useState<"catalogue" | "oneoff" | null>(null);
   const [term, setTerm] = useState("");
-  // Only the columns this sheet was created with (or later edited to have).
-  const columns = useMemo(() => resolveColumns(sheet.columns), [sheet.columns]);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [dragKey, setDragKey] = useState<string | null>(null);
+  const [overKey, setOverKey] = useState<string | null>(null);
+  // Only the columns this sheet was created with (or later edited to have), in the operator's
+  // saved order, with any custom columns they defined merged in.
+  const columns = useMemo(
+    () => resolveColumns(sheet.columns, sheet.custom_columns),
+    [sheet.columns, sheet.custom_columns],
+  );
+
+  // Full-screen: the sheet is wide, so the useful mode is "nothing but the grid". Esc leaves, and
+  // the page behind is scroll-locked so a stray wheel doesn't move it under the overlay.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      // Don't steal Esc from a cell being edited — blur first, leave full screen on the next press.
+      if (e.key !== "Escape") return;
+      const el = document.activeElement as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) return;
+      setFullscreen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [fullscreen]);
+
+  // ---- drag a header to move that column ---------------------------------------------------------
+  // The pinned Item column is the row label and is `sticky left-0`; it only works as the FIRST
+  // column, so it neither drags nor accepts a drop.
+  async function moveColumn(fromKey: string, toKey: string) {
+    if (fromKey === toKey) return;
+    const order = columns.map((c) => c.key);
+    const from = order.indexOf(fromKey);
+    const to = order.indexOf(toKey);
+    if (from < 0 || to < 0) return;
+    const next = [...order];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    try {
+      await updateSheet.mutateAsync({ id: sheet.id, columns: next });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not move the column");
+    }
+  }
 
   // Draft cells keyed by row id. Server rows seed it; a row being edited keeps its local value so a
   // background refetch can't yank the cell out from under the cursor.
@@ -59,10 +107,30 @@ export function QuerySheetGrid({ sheet, editable }: { sheet: QuerySheetDetail; e
   const rows = sheet.rows.map((r) => ({ ...r, cells: drafts[r.id] ?? r.cells }));
   const allCells = rows.map((r) => r.cells);
 
-  function setCell(rowId: string, key: string, raw: string, col: SheetCol) {
+  // Writes to the column's CELL key, not its column key — two columns may share one value
+  // (Quantity is shown in both the request and the purchase block), and they must stay in step.
+  function setCell(rowId: string, raw: string, col: SheetCol) {
     dirty.current.add(rowId);
     const value = col.kind === "number" ? (raw === "" ? null : Number(raw)) : raw === "" ? null : raw;
-    setDrafts((d) => ({ ...d, [rowId]: { ...(d[rowId] ?? {}), [key]: value } }));
+    setDrafts((d) => ({ ...d, [rowId]: { ...(d[rowId] ?? {}), [cellKeyOf(col)]: value } }));
+  }
+
+  // Checkbox columns store 1/0 rather than true/false: the cells blob is shared with number and
+  // text columns, and 1/0 survives a CSV round-trip and sums in the footer as a count.
+  function setBool(rowId: string, next: boolean, col: SheetCol) {
+    dirty.current.add(rowId);
+    setDrafts((d) => ({ ...d, [rowId]: { ...(d[rowId] ?? {}), [cellKeyOf(col)]: next ? 1 : 0 } }));
+    void commitLater(rowId, { ...(drafts[rowId] ?? {}), [cellKeyOf(col)]: next ? 1 : 0 });
+  }
+
+  // A checkbox has no blur, so it persists immediately with the value we just computed.
+  async function commitLater(rowId: string, cells: SheetCells) {
+    dirty.current.delete(rowId);
+    try {
+      await updateRow.mutateAsync({ id: rowId, cells });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save the row");
+    }
   }
 
   async function commit(rowId: string) {
@@ -147,7 +215,21 @@ export function QuerySheetGrid({ sheet, editable }: { sheet: QuerySheetDetail; e
           .map((p) => ({ id: p.id, name: p.name, meta: p.sku }));
 
   return (
-    <div className="space-y-3">
+    <div
+      className={cn(
+        "space-y-3",
+        fullscreen && "fixed inset-0 z-50 flex flex-col overflow-hidden bg-background p-4",
+      )}
+    >
+      {fullscreen && (
+        <div className="flex shrink-0 items-center gap-2">
+          <h2 className="truncate [font-family:var(--font-heading)] text-lg font-bold">{sheet.title}</h2>
+          <span className="text-xs text-muted-foreground tabular-nums">{rows.length} rows · {columns.length} columns</span>
+          <Button size="sm" variant="outline" className="ml-auto" onClick={() => setFullscreen(false)}>
+            <Minimize2 className="size-4" /> Exit full screen
+          </Button>
+        </div>
+      )}
       {editable && (
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="outline" onClick={addBlank} disabled={addRows.isPending}>
@@ -159,9 +241,22 @@ export function QuerySheetGrid({ sheet, editable }: { sheet: QuerySheetDetail; e
           <Button size="sm" variant="outline" onClick={() => setPicking((p) => (p === "oneoff" ? null : "oneoff"))}>
             <PackagePlus className="size-4" /> Add from one-off products
           </Button>
+          {!fullscreen && (
+            <Button size="sm" variant="outline" onClick={() => setFullscreen(true)}>
+              <Maximize2 className="size-4" /> Full screen
+            </Button>
+          )}
           <span className="text-xs text-muted-foreground">
-            Rough working sheet — nothing here affects stock, orders or reporting.
+            Drag a column header to move it. Nothing here affects stock, orders or reporting.
           </span>
+        </div>
+      )}
+
+      {!editable && !fullscreen && (
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setFullscreen(true)}>
+            <Maximize2 className="size-4" /> Full screen
+          </Button>
         </div>
       )}
 
@@ -195,7 +290,12 @@ export function QuerySheetGrid({ sheet, editable }: { sheet: QuerySheetDetail; e
         </div>
       )}
 
-      <div className="max-h-[calc(100vh-22rem)] overflow-auto rounded-md border border-border bg-card">
+      <div
+        className={cn(
+          "overflow-auto rounded-md border border-border bg-card",
+          fullscreen ? "min-h-0 flex-1" : "max-h-[calc(100vh-22rem)]",
+        )}
+      >
         <table className="w-full border-collapse text-sm whitespace-nowrap">
           <thead className="sticky top-0 z-20">
             <tr className="bg-black text-left text-white">
@@ -207,19 +307,43 @@ export function QuerySheetGrid({ sheet, editable }: { sheet: QuerySheetDetail; e
               {editable && <th className="bg-black" />}
             </tr>
             <tr className="bg-black text-left text-white">
-              {columns.map((c, i) => (
-                <th
-                  key={c.key}
-                  className={cn(
-                    "bg-black px-3 pb-2 align-bottom [font-family:var(--font-heading)] text-xs font-semibold uppercase",
-                    alignCls(c.align),
-                    c.pinned && "sticky left-0 z-30 shadow-[1px_0_0_rgba(255,255,255,0.12)]",
-                    startsSection(i) && "border-l border-white/10",
-                  )}
-                >
-                  <span className="whitespace-pre-line leading-tight">{c.label}</span>
-                </th>
-              ))}
+              {columns.map((c, i) => {
+                const movable = editable && !c.pinned;
+                return (
+                  <th
+                    key={c.key}
+                    draggable={movable}
+                    onDragStart={movable ? () => setDragKey(c.key) : undefined}
+                    onDragEnd={() => { setDragKey(null); setOverKey(null); }}
+                    onDragOver={movable ? (e) => { e.preventDefault(); if (overKey !== c.key) setOverKey(c.key); } : undefined}
+                    onDragLeave={movable ? () => setOverKey((k) => (k === c.key ? null : k)) : undefined}
+                    onDrop={
+                      movable
+                        ? (e) => {
+                            e.preventDefault();
+                            if (dragKey) void moveColumn(dragKey, c.key);
+                            setDragKey(null);
+                            setOverKey(null);
+                          }
+                        : undefined
+                    }
+                    title={movable ? "Drag to move this column" : undefined}
+                    className={cn(
+                      "bg-black px-3 pb-2 align-bottom [font-family:var(--font-heading)] text-xs font-semibold uppercase",
+                      alignCls(c.align),
+                      c.pinned && "sticky left-0 z-30 shadow-[1px_0_0_rgba(255,255,255,0.12)]",
+                      startsSection(i) && "border-l border-white/10",
+                      movable && "cursor-grab select-none",
+                      dragKey === c.key && "opacity-40",
+                      // Where it will land, drawn as an insertion edge rather than a fill so the
+                      // header text stays readable while dragging.
+                      overKey === c.key && dragKey && dragKey !== c.key && "shadow-[inset_2px_0_0_#cc0000]",
+                    )}
+                  >
+                    <span className="whitespace-pre-line leading-tight">{c.label}</span>
+                  </th>
+                );
+              })}
               {editable && <th className="w-10 bg-black" />}
             </tr>
           </thead>
@@ -244,12 +368,23 @@ export function QuerySheetGrid({ sheet, editable }: { sheet: QuerySheetDetail; e
                           <span className={cn("block px-3 py-2 tabular-nums", alignCls(c.align), v == null && "text-muted-foreground/40")}>
                             {derivedText(c, v) ?? "–"}
                           </span>
+                        ) : c.kind === "bool" ? (
+                          <span className="flex items-center justify-center px-3 py-2">
+                            <input
+                              type="checkbox"
+                              aria-label={c.label.replace(/\n/g, " ")}
+                              checked={Number(row.cells[cellKeyOf(c)] ?? 0) > 0}
+                              disabled={!editable}
+                              onChange={(e) => setBool(row.id, e.target.checked, c)}
+                              className="size-4 accent-[#cc0000] disabled:cursor-default"
+                            />
+                          </span>
                         ) : (
                           <input
                             type={c.kind === "number" ? "number" : c.kind === "date" ? "date" : "text"}
-                            value={(row.cells[c.key] ?? "") as string | number}
+                            value={(row.cells[cellKeyOf(c)] ?? "") as string | number}
                             disabled={!editable}
-                            onChange={(e) => setCell(row.id, c.key, e.target.value, c)}
+                            onChange={(e) => setCell(row.id, e.target.value, c)}
                             onBlur={() => commit(row.id)}
                             className={cn(
                               "w-full min-w-[6rem] bg-transparent px-3 py-2 outline-none focus:bg-[#cc0000]/[0.06] focus:ring-1 focus:ring-inset focus:ring-[#cc0000]/40 disabled:cursor-default",

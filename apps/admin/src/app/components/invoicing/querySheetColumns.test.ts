@@ -3,9 +3,9 @@
 // drift, a rough sheet would quietly disagree with the catalogue it's modelled on.
 import { describe, it, expect } from "vitest";
 import {
-  COLUMNS, cellValue, columnTotal, landedUnit, unitCost, resolveColumns,
-  ALL_COLUMN_KEYS, ESSENTIAL_COLUMN_KEYS, REQUIRED_COLUMN_KEYS,
-  type SheetCells,
+  COLUMNS, cellValue, cellKeyOf, columnTotal, landedUnit, unitCost, resolveColumns, toCustomColumns,
+  ALL_COLUMN_KEYS, ESSENTIAL_COLUMN_KEYS, QUERY_COLUMN_KEYS, REQUIRED_COLUMN_KEYS,
+  type CustomColumnDef, type SheetCells,
 } from "./querySheetColumns";
 
 const col = (key: string) => COLUMNS.find((c) => c.key === key)!;
@@ -74,30 +74,90 @@ describe("query sheet derived columns", () => {
     expect(resolveColumns(["name", "retiredColumn"]).map((c) => c.key)).toEqual(["name"]);
   });
 
-  it("renders selected columns in catalogue order, not tick order", () => {
-    expect(resolveColumns(["status", "retail", "qty"]).map((c) => c.key)).toEqual(["name", "qty", "retail", "status"]);
+  // Columns are now DRAGGABLE, so the stored array is the layout. This deliberately replaces the
+  // old "always render in catalogue declaration order" rule — re-sorting would have silently
+  // undone any layout the operator arranged by hand.
+  it("renders selected columns in the SAVED order, so a dragged layout sticks", () => {
+    expect(resolveColumns(["status", "retail", "qty"]).map((c) => c.key)).toEqual(["name", "status", "retail", "qty"]);
+    expect(resolveColumns(["name", "qty", "retail"]).map((c) => c.key)).toEqual(["name", "qty", "retail"]);
   });
 
   it("falls back to every column when a sheet has no selection stored", () => {
-    expect(resolveColumns([])).toHaveLength(28);
-    expect(resolveColumns(null)).toHaveLength(28);
+    expect(resolveColumns([])).toHaveLength(38);
+    expect(resolveColumns(null)).toHaveLength(38);
   });
 
   it("offers presets that are all real columns", () => {
-    expect(ALL_COLUMN_KEYS).toHaveLength(28);
-    for (const k of [...ESSENTIAL_COLUMN_KEYS, ...REQUIRED_COLUMN_KEYS]) {
+    expect(ALL_COLUMN_KEYS).toHaveLength(38);
+    for (const k of [...ESSENTIAL_COLUMN_KEYS, ...QUERY_COLUMN_KEYS, ...REQUIRED_COLUMN_KEYS]) {
       expect(ALL_COLUMN_KEYS, `${k} must be a real column`).toContain(k);
     }
     expect(REQUIRED_COLUMN_KEYS).toEqual(["name"]);
   });
 
-  it("mirrors the catalogue's 28 headers and section order", () => {
-    expect(COLUMNS).toHaveLength(28);
-    expect([...new Set(COLUMNS.map((c) => c.group))]).toEqual(["Item", "Cost", "Pricing", "Sales", "Payments", "Supply"]);
+  it("mirrors the catalogue's headers and section order", () => {
+    expect(COLUMNS).toHaveLength(38);
+    expect([...new Set(COLUMNS.map((c) => c.group))]).toEqual(["Item", "Cost", "Pricing", "Sales", "Payments", "Supply", "Progress"]);
     // Derived cells must never be editable inputs.
     expect(COLUMNS.filter((c) => c.derived).map((c) => c.key)).toEqual([
-      "unitCost", "totalCost", "shipTotal", "landedUnit", "landedTotal",
-      "mRetail", "profitUnit", "mReseller", "remaining", "itemPaidQ", "shipPaidQ", "totalPaid",
+      "unitCost", "totalCost", "shipTotal", "landedUnit", "landedTotal", "costInternal", "internalCost",
+      "profit", "mRetail", "profitUnit", "mReseller", "remaining", "itemPaidQ", "shipPaidQ", "totalPaid",
     ]);
+  });
+
+  // ---- the client's requested query fields ------------------------------------------------------
+
+  it("Quantity appears twice but is ONE value — the two columns share a cell key", () => {
+    const a = col("qty");
+    const b = col("qty2");
+    expect(cellKeyOf(a)).toBe("qty");
+    expect(cellKeyOf(b)).toBe("qty"); // the mirror reads/writes the same cell
+    expect(cellValue(b, row)).toBe(3);
+    // ...and only ONE of them carries a footer total, or the sheet would sum the qty twice.
+    expect(columnTotal(a, [row, row])).toBe(6);
+    expect(columnTotal(b, [row, row])).toBeNull();
+  });
+
+  it("Cost Internal / Internal Cost reuse the landed-cost arithmetic, so they can't disagree", () => {
+    expect(cellValue(col("costInternal"), row)).toBe(landedUnit(row));      // 36,500 per unit
+    expect(cellValue(col("costInternal"), row)).toBe(cellValue(col("landedUnit"), row));
+    expect(cellValue(col("internalCost"), row)).toBe(109500);               // × qty 3
+    expect(cellValue(col("internalCost"), row)).toBe(cellValue(col("landedTotal"), row));
+  });
+
+  it("Profit is the line total: (sale price - landed cost) x qty, blank until priced", () => {
+    expect(cellValue(col("profit"), { ...row, salePrice: 50000 })).toBe(40500); // (50000-36500)×3
+    expect(cellValue(col("profit"), row)).toBeNull(); // no sale price ⇒ blank, not a fake 0
+    expect(columnTotal(col("profit"), [{ ...row, salePrice: 50000 }, { ...row, salePrice: 50000 }])).toBe(81000);
+  });
+
+  it("Purchasing Done? / Delivered? are yes-no cells, not typed text", () => {
+    expect(col("purchasingDone").kind).toBe("bool");
+    expect(col("delivered").kind).toBe("bool");
+    expect(col("purchasingDone").derived).toBeUndefined(); // operator-set, not computed
+  });
+
+  // ---- custom (operator-defined) columns --------------------------------------------------------
+
+  it("merges a sheet's own columns in, at the position the layout puts them", () => {
+    const mine: CustomColumnDef[] = [{ key: "c:1", label: "Lead time", kind: "text" }];
+    const cols = resolveColumns(["name", "c:1", "retail"], mine);
+    expect(cols.map((c) => c.key)).toEqual(["name", "c:1", "retail"]);
+    expect(cols[1].label).toBe("Lead time");
+    expect(cols[1].custom).toBe(true);
+  });
+
+  it("drops a custom column that was deleted, rather than crashing the grid", () => {
+    expect(resolveColumns(["name", "c:gone"], []).map((c) => c.key)).toEqual(["name"]);
+  });
+
+  it("rejects malformed stored custom columns instead of rendering junk headers", () => {
+    expect(toCustomColumns(null)).toEqual([]);
+    expect(toCustomColumns([{ key: "noPrefix", label: "X", kind: "text" }])).toEqual([]); // must be namespaced
+    expect(toCustomColumns([{ key: "c:1", label: "   ", kind: "text" }])).toEqual([]);    // blank label
+    expect(toCustomColumns([{ key: "c:1", label: "A", kind: "bogus" }])).toEqual([{ key: "c:1", label: "A", kind: "text" }]);
+    // A duplicate key would render two identical columns writing the same cell — first wins.
+    expect(toCustomColumns([{ key: "c:1", label: "A", kind: "text" }, { key: "c:1", label: "B", kind: "text" }]))
+      .toEqual([{ key: "c:1", label: "A", kind: "text" }]);
   });
 });

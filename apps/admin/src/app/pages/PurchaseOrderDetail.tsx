@@ -35,6 +35,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@360/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@360/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@360/ui/sheet";
+import { useConfirm } from "../components/common/confirm";
 
 // Manually settable statuses. "received" is NOT among them: it is DERIVED, reached only by
 // receiving lines through receive_po_line (which mints the cost-bearing batches + landed cost).
@@ -86,6 +87,8 @@ export function PurchaseOrderDetailContent({ id, variant = "page", onNavigateAwa
   // Products queued for a reprice prompt — receiving stock pushes the received product(s) here so the
   // "Reprice" dialog pops automatically (stepping through one at a time). The panel buttons push too.
   const [repriceQueue, setRepriceQueue] = useState<string[]>([]);
+  // Above the loading/error early-returns: a hook must run on every render.
+  const confirm = useConfirm();
 
   if (poQ.isLoading) return <p className="p-10 text-center text-muted-foreground">Loading…</p>;
   if (poQ.isError || !poQ.data) return <p className="p-10 text-center text-[#cc0000]">Couldn&apos;t load this purchase order.</p>;
@@ -140,7 +143,7 @@ export function PurchaseOrderDetailContent({ id, variant = "page", onNavigateAwa
     if (rate == null) return toast.error("Set the RMB rate before receiving.");
     const pending = lines.filter((l) => l.qty_ordered - l.qty_received > 0);
     if (!pending.length) return toast.error("There is nothing outstanding to receive on this PO.");
-    if (!confirm(`Receive all ${outstanding} outstanding unit(s) on ${po.po_no}? This creates stock batches at landed cost.`)) return;
+    if (!(await confirm({ title: `Receive all ${outstanding} outstanding unit(s) on ${po.po_no}?`, description: "This creates stock batches at landed cost.", confirmLabel: "Receive all" }))) return;
     try {
       for (const l of pending) await receiveAllM.mutateAsync({ line_id: l.id, qty: l.qty_ordered - l.qty_received, received_on: today() });
       toast.success("Received all outstanding lines");
@@ -160,7 +163,7 @@ export function PurchaseOrderDetailContent({ id, variant = "page", onNavigateAwa
     if (rate == null) return toast.error("Set the RMB rate before paying.");
     const owing = lines.map((l) => ({ l, d: lineDues(l, rate) })).filter((x) => x.d.itemDue > 0 || x.d.shipDue > 0);
     if (!owing.length) return toast.info("Nothing outstanding to pay.");
-    if (!confirm(`Record a payment of ${formatPKR(due)} to settle the full balance on ${po.po_no}?`)) return;
+    if (!(await confirm({ title: `Record a payment of ${formatPKR(due)}?`, description: `Settles the full outstanding balance on ${po.po_no}.`, confirmLabel: "Record payment" }))) return;
     try {
       for (const { l, d } of owing) {
         if (d.itemDue > 0) await payAllM.mutateAsync({ line_id: l.id, kind: "item", amount_pkr: d.itemCost, use_credit: false, occurred_on: today() });

@@ -25,6 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@360/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@360/ui/select";
 import { useTableSort, SortHead } from "../common/useTableSort";
+import { useConfirm } from "../common/confirm";
 
 function today() { return new Date().toISOString().slice(0, 10); }
 
@@ -53,6 +54,8 @@ export function DeliveriesManager() {
   function openNew() { setEdit(null); setOpen(true); }
   function openEdit(r: DeliveryRow) { setEdit(r); setOpen(true); }
 
+  const confirm = useConfirm();
+
   async function togglePaid(r: DeliveryRow) {
     try {
       await setPaid.mutateAsync({ id: r.id, paid_on: r.paid_on ? null : today() });
@@ -62,7 +65,7 @@ export function DeliveriesManager() {
     }
   }
   async function remove(r: DeliveryRow) {
-    if (!confirm(`Delete this delivery cost of ${formatPKR(r.amount_pkr)}?`)) return;
+    if (!(await confirm({ title: `Delete this delivery cost of ${formatPKR(r.amount_pkr)}?`, destructive: true }))) return;
     try {
       await del.mutateAsync(r.id);
       toast.success("Delivery cost deleted");

@@ -53,16 +53,19 @@ vi.mock("../data/catalog", () => ({
 }));
 
 import { ProductDetail } from "./ProductDetail";
+import { ConfirmProvider } from "../components/common/confirm";
 
 afterEach(cleanup);
 
 function renderDetail() {
   return render(
+    <ConfirmProvider>
     <MemoryRouter initialEntries={["/products/abc"]}>
       <Routes>
         <Route path="/products/:id" element={<ProductDetail />} />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
+    </ConfirmProvider>,
   );
 }
 

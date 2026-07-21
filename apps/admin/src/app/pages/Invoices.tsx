@@ -37,6 +37,7 @@ import {
 } from "@360/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@360/ui/tabs";
 import { QuerySheetsTab } from "../components/invoicing/QuerySheetsTab";
+import { useConfirm } from "../components/common/confirm";
 
 const STATUSES: (InvoiceStatus | "all")[] = ["all", "paid", "partial", "unpaid", "overdue", "void"];
 const STATUS_FILTER_LABEL: Record<string, string> = {
@@ -143,8 +144,10 @@ export function Invoices() {
 
   const activeQuotation = quotationRows.find((quote) => quote.id === activeQuotationId) ?? null;
 
+  const confirm = useConfirm();
+
   async function remove(inv: InvoiceListItem) {
-    if (!confirm(`Delete ${inv.invoice_no}?`)) return;
+    if (!(await confirm({ title: `Delete ${inv.invoice_no}?`, destructive: true }))) return;
     try {
       await del.mutateAsync(inv.id);
       toast.success("Invoice deleted");
@@ -154,7 +157,7 @@ export function Invoices() {
   }
 
   async function removeQuotation(quote: QuotationRecord) {
-    if (!confirm(`Delete ${quote.quote_no}?`)) return;
+    if (!(await confirm({ title: `Delete ${quote.quote_no}?`, destructive: true }))) return;
     try {
       await quotations.deleteQuotation(quote.id);
       toast.success("Quotation deleted");

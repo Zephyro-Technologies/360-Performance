@@ -55,6 +55,7 @@ import {
   TableHeader,
   TableRow,
 } from "@360/ui/table";
+import { useConfirm } from "../components/common/confirm";
 
 const TYPE_LABEL: Record<string, string> = { retail: "Retail", trade: "Trade", workshop: "Workshop" };
 
@@ -129,8 +130,10 @@ export function DataManagement() {
   function openNewVendor() { setVendorEdit(null); setVendorDialog(true); }
   function openEditVendor(v: VendorEditTarget) { setVendorEdit(v); setVendorDialog(true); }
 
+  const confirm = useConfirm();
+
   async function removeCustomer(c: Customer) {
-    if (!confirm(`Delete ${c.name}?`)) return;
+    if (!(await confirm({ title: `Delete ${c.name}?`, destructive: true }))) return;
     try {
       await delCustomer.mutateAsync(c.id);
       toast.success("Customer deleted");
@@ -139,7 +142,7 @@ export function DataManagement() {
     }
   }
   async function removeVendor(v: VendorRow) {
-    if (!confirm(`Delete ${v.name}?`)) return;
+    if (!(await confirm({ title: `Delete ${v.name}?`, destructive: true }))) return;
     try {
       if (v.kind === "product") await delSupplier.mutateAsync(v.id);
       else await delVendorAccount.mutateAsync(v.id);

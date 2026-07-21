@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@360/ui/table";
 import { useTableSort, SortHead } from "../components/common/useTableSort";
+import { useConfirm } from "../components/common/confirm";
 
 export function Blog() {
   const postsQ = useBlogPosts();
@@ -45,8 +46,9 @@ export function Blog() {
     setEditing(p);
     setOpen(true);
   }
+  const confirm = useConfirm();
   async function remove(p: BlogPost) {
-    if (!confirm(`Delete "${p.title}"?`)) return;
+    if (!(await confirm({ title: `Delete "${p.title}"?`, destructive: true }))) return;
     try {
       await del.mutateAsync(p.id);
       toast.success("Post deleted");

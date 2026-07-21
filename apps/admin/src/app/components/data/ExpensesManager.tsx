@@ -13,6 +13,7 @@ import { Button } from "@360/ui/button";
 import { Input } from "@360/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@360/ui/table";
 import { useTableSort, SortHead } from "../common/useTableSort";
+import { useConfirm } from "../common/confirm";
 
 // Opens a private receipt via a short-lived signed URL (fetched on click).
 function ReceiptCell({ path }: { path: string | null }) {
@@ -32,6 +33,7 @@ function ReceiptCell({ path }: { path: string | null }) {
 export function ExpensesManager() {
   const expensesQ = useExpenses();
   const delExpense = useDeleteExpense();
+  const confirm = useConfirm();
   const { can } = useAuth();
   const [expEdit, setExpEdit] = useState<ExpenseRow | null>(null);
   const [expDialog, setExpDialog] = useState(false);
@@ -50,7 +52,7 @@ export function ExpensesManager() {
   useOpenOnNewParam(openNew); // topbar "+ New → Record expense"
   function openEdit(e: ExpenseRow) { setExpEdit(e); setExpDialog(true); }
   async function remove(e: ExpenseRow) {
-    if (!confirm("Delete this expense?")) return;
+    if (!(await confirm({ title: "Delete this expense?", destructive: true }))) return;
     try {
       await delExpense.mutateAsync(e.id);
       toast.success("Expense deleted");

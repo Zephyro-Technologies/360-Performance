@@ -16,10 +16,11 @@ import {
 } from "../../data/querySheets";
 import { QuerySheetGrid } from "./QuerySheetGrid";
 import { QuerySheetColumnPicker } from "./QuerySheetColumnPicker";
-import { ALL_COLUMN_KEYS } from "./querySheetColumns";
+import { ALL_COLUMN_KEYS, QUERY_COLUMN_KEYS, type CustomColumnDef } from "./querySheetColumns";
 import { Label } from "@360/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@360/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@360/ui/select";
+import { useConfirm } from "../common/confirm";
 
 // `newOpen` is owned by the Invoices page: the "New Query" button lives in the page header
 // alongside New Invoice / New Quotation, so the trigger sits outside this component. The dialog
@@ -28,14 +29,16 @@ export function QuerySheetsTab({ newOpen, onNewOpenChange }: { newOpen: boolean;
   const [openId, setOpenId] = useState<string | null>(null);
   const create = useCreateQuerySheet();
   const [title, setTitle] = useState("");
-  const [columns, setColumns] = useState<string[]>(ALL_COLUMN_KEYS);
+  const [columns, setColumns] = useState<string[]>(QUERY_COLUMN_KEYS);
+  const [customCols, setCustomCols] = useState<CustomColumnDef[]>([]);
 
   async function add() {
     try {
-      const id = await create.mutateAsync({ title, columns });
+      const id = await create.mutateAsync({ title, columns, custom_columns: customCols });
       onNewOpenChange(false);
       setTitle("");
-      setColumns(ALL_COLUMN_KEYS);
+      setColumns(QUERY_COLUMN_KEYS);
+      setCustomCols([]);
       setOpenId(id);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not create the sheet");
@@ -50,7 +53,7 @@ export function QuerySheetsTab({ newOpen, onNewOpenChange }: { newOpen: boolean;
         <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>New query sheet</DialogTitle>
-            <DialogDescription>Name it, then tick the columns you want. You can change them later.</DialogDescription>
+            <DialogDescription>Name it, then tick the columns you want, drag them into the order you like, and add your own. All changeable later.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1">
@@ -66,7 +69,7 @@ export function QuerySheetsTab({ newOpen, onNewOpenChange }: { newOpen: boolean;
             </div>
             <div className="space-y-1">
               <Label>Columns</Label>
-              <QuerySheetColumnPicker value={columns} onChange={setColumns} />
+              <QuerySheetColumnPicker value={columns} onChange={setColumns} custom={customCols} onCustomChange={setCustomCols} />
             </div>
           </div>
           <DialogFooter>
@@ -93,6 +96,7 @@ function SheetList({ onOpen }: { onOpen: (id: string) => void }) {
   const sheetsQ = useQuerySheets();
   const del = useDeleteQuerySheet();
   const update = useUpdateQuerySheet();
+  const confirm = useConfirm();
   const { can } = useAuth();
   const [renaming, setRenaming] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -110,7 +114,7 @@ function SheetList({ onOpen }: { onOpen: (id: string) => void }) {
   }
 
   async function remove(id: string, name: string) {
-    if (!confirm(`Delete "${name}"? This removes the whole sheet.`)) return;
+    if (!(await confirm({ title: `Delete "${name}"?`, description: "This removes the whole sheet and every row in it.", destructive: true }))) return;
     try {
       await del.mutateAsync(id);
     } catch (e) {
@@ -225,6 +229,7 @@ function SheetView({ id, onBack }: { id: string; onBack: () => void }) {
   const { can } = useAuth();
   const [colsOpen, setColsOpen] = useState(false);
   const [draftCols, setDraftCols] = useState<string[]>([]);
+  const [draftCustom, setDraftCustom] = useState<CustomColumnDef[]>([]);
 
   const back = (
     <button type="button" onClick={onBack} className="inline-flex items-center gap-1.5 rounded-md bg-[#cc0000]/10 px-2.5 py-1 text-sm font-medium text-[#cc0000] transition-colors hover:bg-[#cc0000]/20">
@@ -267,7 +272,11 @@ function SheetView({ id, onBack }: { id: string; onBack: () => void }) {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => { setDraftCols(sheet.columns.length ? sheet.columns : ALL_COLUMN_KEYS); setColsOpen(true); }}
+            onClick={() => {
+              setDraftCols(sheet.columns.length ? sheet.columns : ALL_COLUMN_KEYS);
+              setDraftCustom(sheet.custom_columns);
+              setColsOpen(true);
+            }}
           >
             <Columns3 className="size-4" /> Columns
           </Button>
@@ -278,14 +287,14 @@ function SheetView({ id, onBack }: { id: string; onBack: () => void }) {
         <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Columns for &ldquo;{sheet.title}&rdquo;</DialogTitle>
-            <DialogDescription>Tick what this sheet shows. Hiding a column keeps whatever you already typed in it.</DialogDescription>
+            <DialogDescription>Tick what this sheet shows, drag to reorder, and add your own columns. Hiding a column keeps whatever you already typed in it.</DialogDescription>
           </DialogHeader>
-          <QuerySheetColumnPicker value={draftCols} onChange={setDraftCols} />
+          <QuerySheetColumnPicker value={draftCols} onChange={setDraftCols} custom={draftCustom} onCustomChange={setDraftCustom} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setColsOpen(false)}>Cancel</Button>
             <Button
               className="bg-[#cc0000] text-white hover:bg-[#a30000]"
-              onClick={() => { update.mutate({ id: sheet.id, columns: draftCols }); setColsOpen(false); }}
+              onClick={() => { update.mutate({ id: sheet.id, columns: draftCols, custom_columns: draftCustom }); setColsOpen(false); }}
             >
               Save columns
             </Button>

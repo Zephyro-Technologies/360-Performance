@@ -2193,6 +2193,7 @@ export type Database = {
           columns: Json
           created_at: string
           created_by: string | null
+          custom_columns: Json
           id: string
           notes: string | null
           title: string
@@ -2202,6 +2203,7 @@ export type Database = {
           columns?: Json
           created_at?: string
           created_by?: string | null
+          custom_columns?: Json
           id?: string
           notes?: string | null
           title?: string
@@ -2211,6 +2213,7 @@ export type Database = {
           columns?: Json
           created_at?: string
           created_by?: string | null
+          custom_columns?: Json
           id?: string
           notes?: string | null
           title?: string

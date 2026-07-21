@@ -29,6 +29,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@360/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@360/ui/select";
 import { useTableSort, SortHead } from "../common/useTableSort";
+import { useConfirm } from "../common/confirm";
 
 export function MarketingManager() {
   const spendQ = useMarketingSpend();
@@ -81,6 +82,7 @@ function PrGiftsSection({ canEdit, onRecord }: { canEdit: boolean; onRecord: () 
     platform: (g) => g.platform,
     status: (g) => g.status,
   }, "date", "desc");
+
 
   async function setStatus(id: string, status: PrStatus) {
     try { await update.mutateAsync({ id, status }); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not update"); }
@@ -143,6 +145,7 @@ function PrGiftsSection({ canEdit, onRecord }: { canEdit: boolean; onRecord: () 
 function CashSection({ canEdit, canDelete, onAdd }: { canEdit: boolean; canDelete: boolean; onAdd: () => void }) {
   const cashQ = useCashMarketing();
   const del = useDeleteCashMarketing();
+  const confirm = useConfirm();
   const rows = cashQ.data ?? [];
   const sort = useTableSort(rows, {
     date: (r) => r.spent_on,
@@ -153,7 +156,7 @@ function CashSection({ canEdit, canDelete, onAdd }: { canEdit: boolean; canDelet
   }, "date", "desc");
 
   async function remove(id: string) {
-    if (!confirm("Remove this marketing entry?")) return;
+    if (!(await confirm({ title: "Remove this marketing entry?", confirmLabel: "Remove", destructive: true }))) return;
     try { await del.mutateAsync(id); toast.success("Removed"); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not remove"); }
   }
 

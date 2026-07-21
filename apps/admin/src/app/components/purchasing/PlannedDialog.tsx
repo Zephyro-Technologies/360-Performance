@@ -24,6 +24,7 @@ import { Textarea } from "@360/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@360/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@360/ui/select";
 import { Trash2 } from "lucide-react";
+import { useConfirm } from "../common/confirm";
 
 // `prefill` seeds a brand-new plan (ignored when editing) — used by the "Restock in Purchasing"
 // jump from an out-of-stock order line, which lands here with the product + shortfall qty ready.
@@ -73,6 +74,8 @@ export function PlannedDialog({ open, onOpenChange, editing, prefill }: { open: 
     }
   }, [open, editing, prefill]);
 
+  const confirm = useConfirm();
+
   async function submit() {
     if (!itemName.trim()) return toast.error("What are you planning to buy?");
     const payload = {
@@ -98,7 +101,7 @@ export function PlannedDialog({ open, onOpenChange, editing, prefill }: { open: 
 
   async function doDelete() {
     if (!editing) return;
-    if (!confirm(`Remove "${editing.item_name}" from the plan?`)) return;
+    if (!(await confirm({ title: `Remove "${editing.item_name}" from the plan?`, confirmLabel: "Remove", destructive: true }))) return;
     try {
       await del.mutateAsync(editing.id);
       toast.success("Removed");

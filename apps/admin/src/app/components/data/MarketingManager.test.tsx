@@ -24,12 +24,13 @@ vi.mock("../../data/catalog", () => ({
 vi.mock("../../data/auth", () => ({ useAuth: () => ({ can: () => true }) }));
 
 import { MarketingManager } from "./MarketingManager";
+import { ConfirmProvider } from "../common/confirm";
 
 afterEach(() => cleanup());
 
 test("PR-gift dialog offers ONLY house stock with on-hand — never investor stock or empty stock", async () => {
   const user = userEvent.setup({ pointerEventsCheck: 0 });
-  render(<MarketingManager />);
+  render(<ConfirmProvider><MarketingManager /></ConfirmProvider>);
 
   expect(screen.getByText(/total marketing/i)).toBeTruthy();
 

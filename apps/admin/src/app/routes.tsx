@@ -2,18 +2,22 @@
 // lazy-loaded so their code (and recharts / react-dnd) only loads on navigation.
 import { createBrowserRouter, Navigate, Outlet } from "react-router";
 import { AuthProvider } from "./data/auth";
+import { ConfirmProvider } from "./components/common/confirm";
 import { Toaster } from "@360/ui/sonner";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { RouteError } from "./components/RouteError";
 import { Login } from "./pages/Login";
 import { Analytics } from "./pages/Analytics";
 
-// AuthProvider lives at the top so every route shares one auth context.
+// AuthProvider lives at the top so every route shares one auth context. ConfirmProvider sits with
+// it so any page can await a styled confirmation without mounting its own dialog.
 function Root() {
   return (
     <AuthProvider>
-      <Outlet />
-      <Toaster position="top-right" richColors />
+      <ConfirmProvider>
+        <Outlet />
+        <Toaster position="top-right" richColors />
+      </ConfirmProvider>
     </AuthProvider>
   );
 }
