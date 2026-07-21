@@ -97,6 +97,9 @@ export function Navbar() {
                   </Link>
                 ))}
               </nav>
+              {/* Only when there are categories — a failed fetch previously left the
+                  "Categories" heading sitting above an empty list. */}
+              {categories.length > 0 && (
               <div className="mt-2 border-t border-white/10 px-4 py-3">
                 <p className="mb-2 font-heading text-xs uppercase tracking-widest text-white/50">
                   Categories
@@ -114,6 +117,7 @@ export function Navbar() {
                   ))}
                 </div>
               </div>
+              )}
             </div>
 
             {/* Pinned: the primary CTA must never scroll out of reach. */}

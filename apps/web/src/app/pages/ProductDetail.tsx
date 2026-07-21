@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router";
 import { MessageCircle, Truck, ShieldCheck, RotateCcw } from "lucide-react";
 import { Button } from "@360/ui/button";
@@ -17,6 +17,11 @@ import { useDocumentMeta } from "../lib/head";
 import { JsonLd } from "../components/JsonLd";
 import { productJsonLd } from "../lib/jsonld";
 
+// A product published at 0 (the publish guard only requires price_pkr NOT NULL) rendered a
+// large red "Rs 0" and put "• Rs 0" into the prefilled WhatsApp message — a customer would
+// reasonably ask for a free part. Treat non-positive as "unpriced" everywhere it is shown.
+const hasPrice = (v: number | null | undefined): v is number => typeof v === "number" && v > 0;
+
 export function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -24,14 +29,28 @@ export function ProductDetail() {
   const [product, setProduct] = useState<Product | null | undefined>(undefined);
   const [related, setRelated] = useState<Product[]>([]);
   const [activeImage, setActiveImage] = useState(0);
+  const [loadError, setLoadError] = useState(false);
+
+  const load = useCallback((productId: string) => {
+    setProduct(undefined);
+    setLoadError(false);
+    setActiveImage(0);
+    getProductById(productId)
+      .then((p) => setProduct(p ?? null))
+      .catch(() => {
+        // A rejected request is NOT a missing product. Every order on this site arrives via a
+        // forwarded link to this page, so telling a buyer the part "may have been removed"
+        // because their mobile connection blipped is the most expensive wrong message we ship.
+        setProduct(null);
+        setLoadError(true);
+      });
+    getRelatedProducts(productId).then(setRelated).catch(() => setRelated([]));
+  }, []);
 
   useEffect(() => {
     if (!id) return;
-    setProduct(undefined);
-    setActiveImage(0);
-    getProductById(id).then((p) => setProduct(p ?? null)).catch(() => setProduct(null));
-    getRelatedProducts(id).then(setRelated).catch(() => setRelated([]));
-  }, [id]);
+    load(id);
+  }, [id, load]);
 
   // Per-product share image: the product photo when it has one, else the brand card.
   useDocumentMeta(product?.name, product?.metaDescription || product?.shortDescription, product?.images[0]);
@@ -47,6 +66,31 @@ export function ProductDetail() {
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-12 w-full" />
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Checked BEFORE the not-found branch: "we couldn't reach the server" and "this part does
+  // not exist" are different claims and must not share a message.
+  if (loadError) {
+    return (
+      <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 px-4 py-24 text-center">
+        <h1>Couldn't Load This Part</h1>
+        <p className="font-body text-muted-foreground">
+          Something went wrong reaching our catalogue — the part is still here. Check your
+          connection and try again.
+        </p>
+        <div className="mt-2 flex flex-wrap justify-center gap-3">
+          <Button
+            className="bg-brand text-brand-foreground hover:bg-brand-hover"
+            onClick={() => id && load(id)}
+          >
+            Try Again
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/catalogue")}>
+            Back to Catalogue
+          </Button>
         </div>
       </div>
     );
@@ -133,7 +177,9 @@ export function ProductDetail() {
           <p className="mt-2 font-body text-sm uppercase tracking-wide text-muted-foreground">SKU {product.sku}</p>
 
           <div className="mt-4 flex items-center gap-4">
-            {product.salePricePKR != null && product.salePricePKR < product.pricePKR ? (
+            {!hasPrice(product.pricePKR) ? (
+              <span className="font-heading text-3xl font-bold text-foreground">Price on request</span>
+            ) : hasPrice(product.salePricePKR) && product.salePricePKR! < product.pricePKR ? (
               <span className="flex items-baseline gap-2">
                 <span className="font-heading text-3xl font-bold text-brand">{formatPKR(product.salePricePKR)}</span>
                 <span className="font-body text-lg text-muted-foreground line-through">{formatPKR(product.pricePKR)}</span>
@@ -144,7 +190,9 @@ export function ProductDetail() {
             <AvailabilityBadge availability={product.availability} count={product.stockQty} />
           </div>
 
-          <p className="mt-6 font-body text-foreground/80">{product.description}</p>
+          {product.description && (
+            <p className="mt-6 font-body text-foreground/80">{product.description}</p>
+          )}
 
           {/* Order CTA */}
           <div className="mt-8 flex flex-col gap-3">
@@ -188,13 +236,14 @@ export function ProductDetail() {
             ))}
           </div>
 
-          {/* Specs */}
+          {/* Specs — hidden when empty; the heading over a 2px hairline box read as broken. */}
+          {product.specs.length > 0 && (
           <div className="mt-8">
             <h3 className="mb-3">Specifications</h3>
             <dl className="overflow-hidden rounded-lg border border-border">
               {product.specs.map((spec, i) => (
                 <div
-                  key={spec.label}
+                  key={`${spec.label}-${i}`}
                   className={`flex justify-between gap-4 px-4 py-3 ${
                     i % 2 === 0 ? "bg-muted/40" : "bg-card"
                   }`}
@@ -207,6 +256,7 @@ export function ProductDetail() {
               ))}
             </dl>
           </div>
+          )}
         </div>
       </div>
 

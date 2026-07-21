@@ -44,10 +44,19 @@ const SORT_LABELS: Record<SortOption, string> = {
 export function Catalogue() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [categories, setCategories] = useState<Category[]>([]);
+  // Swallowing this failure collapsed the sidebar to a lone "All Products" button and stripped
+  // the empty state's category shortcuts, with nothing to say anything had gone wrong.
+  const [categoriesError, setCategoriesError] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    getCategories().then((c) => alive && setCategories(c)).catch(() => {});
+    getCategories()
+      .then((c) => {
+        if (!alive) return;
+        setCategories(c);
+        setCategoriesError(false);
+      })
+      .catch(() => alive && setCategoriesError(true));
     return () => {
       alive = false;
     };
@@ -104,6 +113,17 @@ export function Catalogue() {
     };
   }, [category, search, sort, page, inStockOnly]);
 
+  // getProducts serves the LAST real page when ?page= overshoots the end. Mirror the corrected
+  // page back into the URL so the address bar, the pagination control and the visible results
+  // agree — otherwise a stale link showed "N products" above "No products found" with no way back.
+  useEffect(() => {
+    if (!result || result.page === page) return;
+    const next = new URLSearchParams(searchParams);
+    if (result.page <= 1) next.delete("page");
+    else next.set("page", String(result.page));
+    setSearchParams(next, { replace: true });
+  }, [result, page, searchParams, setSearchParams]);
+
   const update = (patch: Record<string, string | null>, resetPage = true) => {
     const next = new URLSearchParams(searchParams);
     Object.entries(patch).forEach(([k, v]) => {
@@ -127,6 +147,11 @@ export function Catalogue() {
 
   const FiltersContent = (
     <div className="flex flex-col gap-7">
+      {categoriesError && (
+        <p className="border border-dashed border-zinc-300 px-3 py-2 font-body text-xs text-zinc-600">
+          Couldn't load categories — refresh to filter by category.
+        </p>
+      )}
       <CategoryNav groups={parentGroups} category={category} onSelect={(slug) => update({ category: slug })} />
 
       <div>

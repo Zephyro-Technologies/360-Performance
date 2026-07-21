@@ -30,7 +30,11 @@ export interface WhatsAppProduct {
  * (a UUID means nothing to whoever answers the phone).
  */
 export function whatsappOrderUrl(product: WhatsAppProduct): string {
-  const onSale = product.salePricePKR != null && product.salePricePKR < product.pricePKR;
+  // A non-positive price means "unpriced", not "free". Emitting "• Rs 0" invited customers to
+  // ask for a free part, so the price line is omitted entirely and we ask instead.
+  const priced = typeof product.pricePKR === "number" && product.pricePKR > 0;
+  const onSale =
+    priced && product.salePricePKR != null && product.salePricePKR > 0 && product.salePricePKR < product.pricePKR;
   const price = onSale ? product.salePricePKR! : product.pricePKR;
 
   const lines = [
@@ -38,8 +42,14 @@ export function whatsappOrderUrl(product: WhatsAppProduct): string {
     ``,
     `• ${product.name}`,
     `• SKU: ${product.sku}`,
-    `• ${formatPKR(price)}${onSale ? ` (sale price — was ${formatPKR(product.pricePKR)})` : ""}`,
   ];
+  if (priced) {
+    lines.push(
+      `• ${formatPKR(price)}${onSale ? ` (sale price — was ${formatPKR(product.pricePKR)})` : ""}`,
+    );
+  } else {
+    lines.push(`• Please confirm the price`);
+  }
   if (product.url) lines.push(`• ${product.url}`);
   lines.push(``, `Please confirm availability and dispatch.`);
 

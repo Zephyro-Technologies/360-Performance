@@ -18,20 +18,43 @@ export function SearchBar({
   const [term, setTerm] = useState("");
   const [open, setOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errored, setErrored] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
+  // Debounced. The dropdown opens on the first keystroke, so firing a query per character both
+  // hammered the API and — because `suggestions` stays [] for the whole round trip — flashed
+  // "No matches for 'e'" while the query for "e" was still in flight. A failed request is also
+  // tracked separately: "we couldn't search" is not the same claim as "there is nothing".
   useEffect(() => {
-    if (!term.trim()) {
+    const q = term.trim();
+    if (!q) {
       setSuggestions([]);
+      setLoading(false);
+      setErrored(false);
       return;
     }
     let alive = true;
-    suggestProducts(term)
-      .then((r) => alive && setSuggestions(r))
-      .catch(() => alive && setSuggestions([]));
+    setLoading(true);
+    setErrored(false);
+    const timer = setTimeout(() => {
+      suggestProducts(q)
+        .then((r) => {
+          if (!alive) return;
+          setSuggestions(r);
+          setLoading(false);
+        })
+        .catch(() => {
+          if (!alive) return;
+          setSuggestions([]);
+          setErrored(true);
+          setLoading(false);
+        });
+    }, 250);
     return () => {
       alive = false;
+      clearTimeout(timer);
     };
   }, [term]);
 
@@ -81,7 +104,13 @@ export function SearchBar({
 
       {open && term.trim() && (
         <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-md border border-border bg-popover shadow-xl">
-          {suggestions.length === 0 ? (
+          {loading ? (
+            <p className="px-4 py-3 font-body text-sm text-muted-foreground">Searching…</p>
+          ) : errored ? (
+            <p className="px-4 py-3 font-body text-sm text-muted-foreground">
+              Couldn't search just now — check your connection and try again.
+            </p>
+          ) : suggestions.length === 0 ? (
             <p className="px-4 py-3 font-body text-sm text-muted-foreground">
               No matches for “{term}”.
             </p>

@@ -180,31 +180,66 @@ export async function suggestProducts(term: string, limit = 6): Promise<Product[
 export async function getProducts(query: CatalogueQuery = {}): Promise<CatalogueResult> {
   const { category = "all", search = "", minPrice, maxPrice, inStockOnly = false, sort = "newest", page = 1, pageSize = 9 } = query;
 
-  let q = supabase.from("products_public").select(PRODUCT_COLS, { count: "exact" });
-  if (category !== "all") {
-    const c = slugSafe(category);
-    if (c) q = q.or(`category_slug.eq.${c},parent_slug.eq.${c}`);
+  // Built through a factory because a PostgREST builder cannot be re-executed once awaited,
+  // and the clamp below needs a second, identically-filtered query.
+  const build = (head = false) => {
+    let q = supabase.from("products_public").select(PRODUCT_COLS, { count: "exact", head });
+    if (category !== "all") {
+      const c = slugSafe(category);
+      if (c) q = q.or(`category_slug.eq.${c},parent_slug.eq.${c}`);
+    }
+    const term = safeTerm(search);
+    if (term) q = q.or(`name.ilike.%${term}%,brand.ilike.%${term}%,short_description.ilike.%${term}%,sku.ilike.%${term}%`);
+    if (typeof minPrice === "number") q = q.gte("effective_price_pkr", minPrice);
+    if (typeof maxPrice === "number") q = q.lte("effective_price_pkr", maxPrice);
+    if (inStockOnly) q = q.neq("availability", "out_of_stock");
+
+    // Sort/range-filter by the price the customer actually sees (sale when present).
+    if (sort === "price-asc") q = q.order("effective_price_pkr", { ascending: true });
+    else if (sort === "price-desc") q = q.order("effective_price_pkr", { ascending: false });
+    else if (sort === "name") q = q.order("name", { ascending: true });
+    else q = q.order("created_at", { ascending: false });
+    return q.order("id", { ascending: true }); // unique tiebreaker — stable pagination
+  };
+
+  // Clamp the page BEFORE asking for a range. PostgREST answers 416 Range Not Satisfiable when
+  // the offset is past the end, so a stale bookmark or an indexed ?page= surfaced as an outright
+  // "couldn't load products" error rather than a page of results. The head request costs one
+  // extra round trip and only happens when actually paginating.
+  let safePage = Math.max(1, page);
+  if (safePage > 1) {
+    const { count: probeCount, error: probeError } = await build(true);
+    if (probeError) throw new Error(probeError.message);
+    const probePages = Math.max(1, Math.ceil((probeCount ?? 0) / pageSize));
+    if (safePage > probePages) safePage = probePages;
   }
-  const term = safeTerm(search);
-  if (term) q = q.or(`name.ilike.%${term}%,brand.ilike.%${term}%,short_description.ilike.%${term}%,sku.ilike.%${term}%`);
-  if (typeof minPrice === "number") q = q.gte("effective_price_pkr", minPrice);
-  if (typeof maxPrice === "number") q = q.lte("effective_price_pkr", maxPrice);
-  if (inStockOnly) q = q.neq("availability", "out_of_stock");
 
-  // Sort/range-filter by the price the customer actually sees (sale when present).
-  if (sort === "price-asc") q = q.order("effective_price_pkr", { ascending: true });
-  else if (sort === "price-desc") q = q.order("effective_price_pkr", { ascending: false });
-  else if (sort === "name") q = q.order("name", { ascending: true });
-  else q = q.order("created_at", { ascending: false });
-  q = q.order("id", { ascending: true }); // unique tiebreaker — stable pagination
-
-  const safePage = Math.max(1, page);
   const from = (safePage - 1) * pageSize;
-  const { data, count, error } = await q.range(from, from + pageSize - 1);
+  const { data, count, error } = await build().range(from, from + pageSize - 1);
   if (error) throw new Error(error.message);
   const total = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  // `page` is the page actually served — the caller mirrors it back into the URL so the address
+  // bar, the pagination control and the visible results cannot disagree.
   return { items: rows(data).map(mapProduct), total, page: safePage, pageSize, totalPages };
+}
+
+/**
+ * Parent-category slugs that currently have at least one published product.
+ *
+ * The landing page's collection tabs were a hardcoded slug list, so with a small catalogue most
+ * tabs were dead ends showing "No products in this collection yet". Selecting a single column
+ * keeps this cheap; callers treat a failure as "unknown" and fall back to showing every tab.
+ */
+export async function getStockedParentSlugs(): Promise<Set<string>> {
+  const { data, error } = await supabase.from("products_public").select("parent_slug");
+  if (error) throw new Error(error.message);
+  return new Set(
+    rows(data)
+      .map((r) => (r as { parent_slug: string | null }).parent_slug)
+      .filter((s): s is string => !!s),
+  );
 }
 
 export async function getTestimonials(): Promise<Testimonial[]> {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { ArrowRight, ArrowUpRight, MessageCircle } from "lucide-react";
 import { Button } from "@360/ui/button";
@@ -14,6 +14,7 @@ import {
   getTestimonials,
   getBlogPosts,
   getProducts,
+  getStockedParentSlugs,
 } from "../data/api";
 import { formatDate } from "@360/lib/format";
 import { whatsappGeneralUrl } from "@360/lib/whatsapp";
@@ -113,26 +114,70 @@ export function Landing() {
   const [posts, setPosts] = useState<BlogPost[] | null>(null);
   const [activeTab, setActiveTab] = useState<CategoryId>("exhaust-induction");
   const [collectionItems, setCollectionItems] = useState<Product[] | null>(null);
+  // A failed fetch and an empty shop used to render identically, so an outage looked exactly
+  // like "we have no inventory" — with nothing anywhere to say the site was broken.
+  const [featuredError, setFeaturedError] = useState(false);
+  const [collectionError, setCollectionError] = useState(false);
+  // Parent slugs that actually have stock. null = unknown (not loaded, or the query failed),
+  // in which case we fall back to offering every tab rather than hiding the section.
+  const [stockedSlugs, setStockedSlugs] = useState<Set<string> | null>(null);
 
   useDocumentMeta();
 
+  const loadFeatured = useCallback(() => {
+    setFeatured(null);
+    setFeaturedError(false);
+    getFeaturedProducts()
+      .then(setFeatured)
+      .catch(() => {
+        setFeatured([]);
+        setFeaturedError(true);
+      });
+  }, []);
+
   useEffect(() => {
-    getFeaturedProducts().then(setFeatured).catch(() => setFeatured([]));
+    loadFeatured();
     getTestimonials().then(setTestimonials).catch(() => setTestimonials([]));
     getBlogPosts(3).then(setPosts).catch(() => setPosts([]));
+    getStockedParentSlugs()
+      .then(setStockedSlugs)
+      .catch(() => setStockedSlugs(null));
+  }, [loadFeatured]);
+
+  // Only offer collection tabs with something behind them — the hardcoded list meant most tabs
+  // were dead ends that led to an equally empty catalogue page.
+  const visibleTabs = useMemo(
+    () => (stockedSlugs ? COLLECTION_TABS.filter((t) => stockedSlugs.has(t.id)) : COLLECTION_TABS),
+    [stockedSlugs],
+  );
+
+  // Keep the selection valid when the tab list narrows.
+  useEffect(() => {
+    if (visibleTabs.length > 0 && !visibleTabs.some((t) => t.id === activeTab)) {
+      setActiveTab(visibleTabs[0].id);
+    }
+  }, [visibleTabs, activeTab]);
+
+  const loadCollection = useCallback((tab: CategoryId) => {
+    setCollectionItems(null);
+    setCollectionError(false);
+    return getProducts({ category: tab, pageSize: 5 });
   }, []);
 
   // Fetch just the active collection (parent category) — not the whole catalogue.
   useEffect(() => {
     let alive = true;
-    setCollectionItems(null);
-    getProducts({ category: activeTab, pageSize: 5 })
+    loadCollection(activeTab)
       .then((r) => alive && setCollectionItems(r.items))
-      .catch(() => alive && setCollectionItems([]));
+      .catch(() => {
+        if (!alive) return;
+        setCollectionItems([]);
+        setCollectionError(true);
+      });
     return () => {
       alive = false;
     };
-  }, [activeTab]);
+  }, [activeTab, loadCollection]);
 
   return (
     <>
@@ -268,35 +313,65 @@ export function Landing() {
       {/* ──────────────────────────────────────────────────────────────
           FEATURED PRODUCTS — dark band, 4-up
          ──────────────────────────────────────────────────────────────*/}
-      <section className="bg-black text-white">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
-          <SectionTitle
-            eyebrow="Hand-Picked"
-            title="Featured Products"
-            invert
-          />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {featured
-              ? featured.slice(0, 4).map((p) => (
-                  <ProductCard key={p.id} product={p} tone="dark" />
-                ))
-              : Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-80 w-full bg-white/10" />
-                ))}
+      {/* Skipped entirely when there is nothing to feature: a heading over an empty black band
+          reads as a broken page. Still rendered on error, so an outage stays visible instead of
+          being indistinguishable from an empty shop. */}
+      {(featured === null || featuredError || featured.length > 0) && (
+        <section className="bg-black text-white">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+            <SectionTitle
+              eyebrow="Hand-Picked"
+              title="Featured Products"
+              invert
+            />
+            {featuredError ? (
+              <div className="border border-dashed border-white/25 px-6 py-14 text-center">
+                <p className="font-body text-sm text-white/70">
+                  Couldn't load featured products just now.
+                </p>
+                <button
+                  type="button"
+                  onClick={loadFeatured}
+                  className="mt-4 inline-flex items-center gap-2 border border-white/40 px-5 py-2.5 font-heading text-xs font-bold uppercase tracking-[0.25em] text-white transition-colors hover:bg-white hover:text-black"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : (
+              /* With fewer than four, a fixed 4-column grid pins them left and leaves half the
+                 row empty, which reads as "the rest failed to load". Centre them instead. */
+              <div
+                className={
+                  featured && featured.length < 4
+                    ? "grid justify-center gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,300px))]"
+                    : "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                }
+              >
+                {featured
+                  ? featured.slice(0, 4).map((p) => (
+                      <ProductCard key={p.id} product={p} tone="dark" />
+                    ))
+                  : Array.from({ length: 4 }).map((_, i) => (
+                      <Skeleton key={i} className="h-80 w-full bg-white/10" />
+                    ))}
+              </div>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ──────────────────────────────────────────────────────────────
           FEATURED COLLECTIONS — light, tabbed
          ──────────────────────────────────────────────────────────────*/}
+      {/* Skipped when no parent category has stock at all. */}
+      {visibleTabs.length > 0 && (
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <SectionTitle eyebrow="Curated" title="Featured Collections" />
 
           {/* tab strip */}
           <div className="-mx-4 mb-8 flex gap-1 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-            {COLLECTION_TABS.map((t) => {
+            {visibleTabs.map((t) => {
               const active = t.id === activeTab;
               return (
                 <button
@@ -316,7 +391,11 @@ export function Landing() {
             })}
           </div>
 
-          {collectionItems === null ? (
+          {collectionError ? (
+            <p className="py-12 text-center font-body text-sm text-zinc-500">
+              Couldn't load this collection just now — please refresh.
+            </p>
+          ) : collectionItems === null ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-80 w-full" />
@@ -339,12 +418,13 @@ export function Landing() {
               to={`/catalogue?category=${activeTab}`}
               className="inline-flex items-center gap-2 border border-black px-7 py-3 font-heading text-xs font-bold uppercase tracking-[0.25em] text-black transition-colors hover:bg-black hover:text-white"
             >
-              View {COLLECTION_TABS.find((t) => t.id === activeTab)?.label}
+              View {visibleTabs.find((t) => t.id === activeTab)?.label}
               <ArrowUpRight className="size-4" />
             </Link>
           </div>
         </div>
       </section>
+      )}
 
       {/* ──────────────────────────────────────────────────────────────
           TESTIMONIALS — reel-style tall cards on black
@@ -398,6 +478,9 @@ export function Landing() {
       {/* ──────────────────────────────────────────────────────────────
           BLOG PREVIEW — clean, light, three centered cards
          ──────────────────────────────────────────────────────────────*/}
+      {/* Skipped when there are no posts. Previously this rendered the eyebrow, heading and a
+          "View All" button over an empty grid — ~200px of void leading to an empty page. */}
+      {(posts === null || posts.length > 0) && (
       <section id="blog" className="scroll-mt-24 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <SectionTitle
@@ -449,6 +532,7 @@ export function Landing() {
           </div>
         </div>
       </section>
+      )}
 
       {/* ──────────────────────────────────────────────────────────────
           CAR CULTURE — the owner's own drifting videos, on black between the

@@ -8,6 +8,7 @@ import { Skeleton } from "@360/ui/skeleton";
 import { getBlogPosts } from "../data/api";
 import { type BlogPost } from "../data/content";
 import { formatDate } from "@360/lib/format";
+import { whatsappGeneralUrl } from "@360/lib/whatsapp";
 import { useDocumentMeta } from "../lib/head";
 
 export function Blog() {
@@ -49,13 +50,32 @@ export function Blog() {
             <Skeleton className="aspect-[4/3] w-full" />
           </div>
         ) : posts.length === 0 ? (
+          /* Customer-facing, and never a dead end: this is the state every visitor hits until
+             the first post ships, so it carries the two actions they might actually want. */
           <div className="border border-dashed border-zinc-300 px-6 py-20 text-center">
             <p className="font-heading text-xl uppercase tracking-tight text-black">
-              No posts yet
+              No build notes yet
             </p>
-            <p className="mt-2 font-body text-sm text-zinc-600">
-              The admin dashboard is being wired up — new posts will land here soon.
+            <p className="mx-auto mt-2 max-w-md font-body text-sm leading-6 text-zinc-600">
+              We're writing the first ones. In the meantime, browse the catalogue — or message us
+              and we'll spec your build in the chat.
             </p>
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                to="/catalogue"
+                className="inline-flex items-center gap-2 bg-brand px-6 py-3 font-heading text-xs font-bold uppercase tracking-[0.25em] text-white transition-colors hover:bg-brand-hover"
+              >
+                Browse Parts
+              </Link>
+              <a
+                href={whatsappGeneralUrl()}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 border border-black px-6 py-3 font-heading text-xs font-bold uppercase tracking-[0.25em] text-black transition-colors hover:bg-black hover:text-white"
+              >
+                Talk To Us
+              </a>
+            </div>
           </div>
         ) : (
           <>

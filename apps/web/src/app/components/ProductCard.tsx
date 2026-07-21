@@ -88,7 +88,13 @@ export function ProductCard({
         </p>
 
         <div className="mt-3 flex items-center gap-2">
-          {product.salePricePKR != null && product.salePricePKR < product.pricePKR ? (
+          {/* Non-positive price = unpriced, not free. See whatsappOrderUrl, which omits the
+              price line in the same case rather than offering the part at Rs 0. */}
+          {!(product.pricePKR > 0) ? (
+            <span className={`font-heading font-bold ${dark ? "text-white" : "text-black"}`}>
+              Price on request
+            </span>
+          ) : product.salePricePKR != null && product.salePricePKR > 0 && product.salePricePKR < product.pricePKR ? (
             <>
               <span className="font-heading font-bold text-brand">{formatPKR(product.salePricePKR)}</span>
               <span className={`font-body text-xs line-through ${dark ? "text-white/40" : "text-zinc-400"}`}>

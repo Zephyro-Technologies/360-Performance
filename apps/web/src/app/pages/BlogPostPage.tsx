@@ -89,20 +89,25 @@ export function BlogPostPage() {
         )}
       </header>
 
-      {/* Hero image */}
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <div className="aspect-[16/9] overflow-hidden bg-zinc-100">
-          <ImageWithFallback
-            src={post.image}
-            alt={post.title}
-            className="size-full object-cover"
-          />
+      {/* Hero image — only when there is one. Without the guard a post with no hero rendered
+          ~600px of grey placeholder between the headline and the body. */}
+      {post.image && (
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div className="aspect-[16/9] overflow-hidden bg-zinc-100">
+            <ImageWithFallback
+              src={post.image}
+              alt={post.title}
+              className="size-full object-cover"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Body */}
       <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-        <p className="font-body text-lg leading-8 text-black">{post.excerpt}</p>
+        {post.excerpt && (
+          <p className="font-body text-lg leading-8 text-black">{post.excerpt}</p>
+        )}
         {post.bodyMd && (
           <div className="mt-8 font-body text-base leading-8 text-zinc-700">
             <Markdown>{post.bodyMd}</Markdown>
