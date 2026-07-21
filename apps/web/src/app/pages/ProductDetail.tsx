@@ -58,7 +58,7 @@ export function ProductDetail() {
   if (product === undefined) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-2">
+        <div className="grid gap-10 md:grid-cols-2">
           <Skeleton className="aspect-square w-full rounded-lg" />
           <div className="flex flex-col gap-4">
             <Skeleton className="h-8 w-3/4" />
@@ -135,7 +135,7 @@ export function ProductDetail() {
         ]}
       />
 
-      <div className="mt-8 grid gap-10 lg:grid-cols-2">
+      <div className="mt-8 grid gap-10 md:grid-cols-2">
         {/* Gallery */}
         <div>
           <div className="overflow-hidden rounded-lg border border-border bg-muted">
@@ -145,8 +145,9 @@ export function ProductDetail() {
               className="aspect-square w-full object-cover"
             />
           </div>
+          {/* Four 80px thumbs plus gaps exceed a 375px viewport, so the strip scrolls. */}
           {product.images.length > 1 && (
-            <div className="mt-3 flex gap-3">
+            <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
               {product.images.map((img, i) => (
                 <button
                   key={i}
@@ -176,7 +177,8 @@ export function ProductDetail() {
           <h1 className="mt-1">{product.name}</h1>
           <p className="mt-2 font-body text-sm uppercase tracking-wide text-muted-foreground">SKU {product.sku}</p>
 
-          <div className="mt-4 flex items-center gap-4">
+          {/* Wraps: sale price + struck original + availability badge overflow 375px on one line. */}
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
             {!hasPrice(product.pricePKR) ? (
               <span className="font-heading text-3xl font-bold text-foreground">Price on request</span>
             ) : hasPrice(product.salePricePKR) && product.salePricePKR! < product.pricePKR ? (

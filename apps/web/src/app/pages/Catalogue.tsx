@@ -206,8 +206,15 @@ export function Catalogue() {
 
       <div className="mt-8 flex gap-8">
         {/* Sidebar (desktop) */}
-        <aside className="hidden w-60 shrink-0 lg:block">
-          <div className="sticky top-24">{FiltersContent}</div>
+        {/* Shown from md, not lg: at 768–1023px the page previously had 1000px of width and
+            still no sidebar, so the phone layout rendered at tablet size. */}
+        <aside className="hidden w-52 shrink-0 md:block lg:w-60">
+          {/* Bounded + scrollable: with several accordion groups open the column exceeded the
+              viewport, and a sticky element taller than the viewport pins its top, making the
+              bottom — including "Reset filters" — permanently unreachable. */}
+          <div className="sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto overscroll-contain pr-1">
+            {FiltersContent}
+          </div>
         </aside>
 
         {/* Main */}
@@ -237,7 +244,9 @@ export function Catalogue() {
                       Filters
                     </SheetTitle>
                   </SheetHeader>
-                  <div className="mt-6">{FiltersContent}</div>
+                  {/* SheetContent ships no padding, so these sat flush at x=0 while the
+                      sheet header above them was inset 16px. */}
+                  <div className="mt-6 px-4 pb-4">{FiltersContent}</div>
                 </SheetContent>
               </Sheet>
 

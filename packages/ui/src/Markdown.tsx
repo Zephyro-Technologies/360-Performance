@@ -9,7 +9,11 @@ const safeUrl = (url: string) => (/^(https?:|mailto:|tel:|\/|#)/i.test(url) ? ur
 
 export function Markdown({ children }: { children: string }) {
   return (
-    <div className="text-sm leading-relaxed [&_a]:text-[#cc0000] [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground [&_code]:rounded [&_code]:bg-secondary [&_code]:px-1 [&_h1]:mb-2 [&_h1]:mt-4 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-semibold [&_img]:my-2 [&_img]:rounded-md [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-3 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5">
+    /* No base text size — callers set it (BlogPostPage wraps this in text-base leading-8, which
+       a text-sm here silently overrode, rendering the article body smaller than its own lead
+       paragraph). Overflow guards are on author-supplied content: a long URL, a code block or a
+       table would otherwise push the page sideways at 375px. */
+    <div className="leading-relaxed break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:overflow-x-auto [&_img]:max-w-full [&_a]:break-words [&_a]:text-[#cc0000] [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground [&_code]:rounded [&_code]:bg-secondary [&_code]:px-1 [&_h1]:mb-2 [&_h1]:mt-4 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-semibold [&_img]:my-2 [&_img]:rounded-md [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-3 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5">
       <ReactMarkdown
         urlTransform={safeUrl}
         components={{

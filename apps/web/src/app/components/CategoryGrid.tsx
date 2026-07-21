@@ -72,14 +72,14 @@ export function CategoryGrid() {
   }
   if (!parents) {
     return (
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-72 animate-pulse bg-zinc-900 motion-reduce:animate-none" />)}
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       {parents.map((c) => <Tile key={c.id} category={c} />)}
     </div>
   );

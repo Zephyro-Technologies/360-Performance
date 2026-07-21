@@ -20,9 +20,13 @@ export function Marquee({
       }`}
       aria-hidden
     >
-      <div className="flex w-max animate-[marquee_38s_linear_infinite] gap-12 py-5 motion-reduce:animate-none group-hover:[animation-play-state:paused]">
+      {/* No gap on the track: 16 spans separated by a parent gap means 15 gaps, but one visual
+          cycle is 4 spans and 4 gaps — so translating -25% fell a quarter-gap short and the loop
+          visibly jumped every cycle. Each item now carries its own trailing space, making the
+          repeating unit self-contained and -25% exact. */}
+      <div className="flex w-max animate-[marquee_38s_linear_infinite] py-5 motion-reduce:animate-none group-hover:[animation-play-state:paused]">
         {row.map((text, i) => (
-          <span key={i} className="flex shrink-0 items-center gap-12">
+          <span key={i} className="flex shrink-0 items-center gap-12 pr-12">
             <span className="font-heading text-sm font-bold uppercase tracking-[0.35em]">
               {text}
             </span>

@@ -25,7 +25,10 @@ export function ProductCard({
 
   return (
     <div
-      className={`group flex flex-col overflow-hidden border transition-colors duration-300 ${
+      /* min-w-0: grid items default to min-width:auto, so an unbreakable string (a real part
+         number like GTX3582R-856801-5001S) widened the track and gave the whole page a
+         horizontal scrollbar at 375px. */
+      className={`group flex min-w-0 flex-col overflow-hidden border transition-colors duration-300 ${
         dark
           ? "border-white/10 bg-zinc-950 text-white hover:border-brand"
           : "border-zinc-200 bg-white text-black hover:border-black"
@@ -76,14 +79,15 @@ export function ProductCard({
           className="focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
         >
           <h3
-            className={`mt-1.5 line-clamp-2 font-heading text-sm font-bold uppercase leading-tight tracking-wide transition-colors group-hover:text-brand ${
+            /* line-clamp does not break long words — break-words does. */
+            className={`mt-1.5 line-clamp-2 break-words font-heading text-sm font-bold uppercase leading-tight tracking-wide transition-colors group-hover:text-brand ${
               dark ? "text-white" : "text-black"
             }`}
           >
             {product.name}
           </h3>
         </Link>
-        <p className={`mt-1 font-body text-[11px] uppercase tracking-wide ${dark ? "text-white/40" : "text-zinc-400"}`}>
+        <p className={`mt-1 truncate font-body text-[11px] uppercase tracking-wide ${dark ? "text-white/40" : "text-zinc-400"}`}>
           SKU {product.sku}
         </p>
 

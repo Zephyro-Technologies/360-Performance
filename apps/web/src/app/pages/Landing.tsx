@@ -245,7 +245,9 @@ export function Landing() {
 
         {/* bottom bar — quick stats */}
         <div className="relative z-10 border-t border-white/10 bg-black/40 backdrop-blur-sm">
-          <div className="mx-auto grid max-w-7xl grid-cols-2 items-center gap-4 px-4 py-4 sm:grid-cols-3 sm:px-6 lg:px-8">
+          {/* Three stats in a 2-column grid left the third alone on a second row with an empty
+              cell beside it, doubling the bar's height on the smallest screens. */}
+          <div className="mx-auto grid max-w-7xl grid-cols-3 items-center gap-4 px-4 py-4 sm:px-6 lg:px-8">
             {[
               { k: "500+", v: "Builds Supplied" },
               { k: "100%", v: "Genuine Parts" },
@@ -482,7 +484,9 @@ export function Landing() {
           "View All" button over an empty grid — ~200px of void leading to an empty page. */}
       {(posts === null || posts.length > 0) && (
       <section id="blog" className="scroll-mt-24 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+        {/* max-w-7xl to match every other section — at 6xl this band was inset 64px per side,
+            so its left edge did not line up with the grids above it. */}
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <SectionTitle
             eyebrow="From The Garage"
             title="Blog Posts"
@@ -584,7 +588,9 @@ export function Landing() {
           OUR STORY — short, centered, simple
          ──────────────────────────────────────────────────────────────*/}
       <section id="our-story" className="scroll-mt-24 bg-white">
-        <div className="mx-auto max-w-3xl px-4 pb-20 text-center sm:px-6 lg:px-8">
+        {/* py, not pb: with no top padding this section merged into the white band above it and
+            its heading got half the leading whitespace of every other section. */}
+        <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 lg:px-8 lg:py-20">
           <h2
             className="font-heading font-bold uppercase leading-none tracking-tight text-black"
             style={{ fontSize: "clamp(1.75rem, 4vw, 3rem)" }}

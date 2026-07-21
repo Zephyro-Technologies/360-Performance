@@ -83,7 +83,7 @@ export function Blog() {
             {featured && (
               <Link
                 to={`/blog/${featured.slug}`}
-                className="group grid gap-6 border-y border-zinc-200 py-10 lg:grid-cols-[1.4fr_1fr] lg:gap-10"
+                className="group grid gap-6 border-y border-zinc-200 py-10 md:grid-cols-[1.4fr_1fr] md:gap-10"
               >
                 <div className="aspect-[16/10] overflow-hidden bg-zinc-100">
                   <ImageWithFallback

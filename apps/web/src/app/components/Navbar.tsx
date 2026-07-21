@@ -137,8 +137,11 @@ export function Navbar() {
 
         <Logo className="h-6 sm:h-7" />
 
-        {/* Desktop nav — centered single row of links */}
-        <nav className="mx-auto hidden items-center gap-8 lg:flex">
+        {/* Desktop nav — genuinely centered. `mx-auto` here plus `ml-auto` on the right cluster
+            split the free space three ways, landing the links about a third across rather than
+            in the middle. Centring against the bar itself is independent of how wide the logo
+            and the right-hand controls happen to be. */}
+        <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 lg:flex">
           {NAV_LINKS.map((link) => (
             <NavLink
               key={link.to}
