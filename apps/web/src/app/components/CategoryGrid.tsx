@@ -23,12 +23,14 @@ function Tile({ category }: { category: Category }) {
   return (
     <Link
       to={`/catalogue/${category.slug}`}
-      className="group relative isolate flex h-72 flex-col justify-end bg-zinc-950 ring-1 ring-white/5 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_30px_60px_-20px_rgba(204,0,0,0.55)] hover:ring-brand/40 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+      className="group relative isolate flex h-72 flex-col justify-end transform-gpu bg-zinc-950 ring-1 ring-white/5 transition-all duration-500 [backface-visibility:hidden] hover:-translate-y-1 hover:shadow-[0_30px_60px_-20px_rgba(204,0,0,0.55)] hover:ring-brand/40 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
     >
-      {/* Clip layer, kept separate from the element that lifts on hover. When ONE element both
-          clips (overflow-hidden) and is transformed (the -translate-y lift), Blink leaves a 1px
-          sub-pixel seam — a faint light line — along the bottom edge, most visible at fractional
-          device pixels mid-lift. Clipping here, transforming on the Link, removes it. */}
+      {/* Clip layer, kept separate from the element that lifts on hover. On fractional-DPR
+          displays (Windows scaling) the -translate-y lift landed the clipped bright image edge on
+          a sub-pixel row, and Blink anti-aliased it into a faint light line along the bottom. Two
+          guards: (1) transform-gpu on both the Link and the image keeps them on stable GPU layers
+          so the lift composites cleanly; (2) the gradient is solid black across the bottom band
+          (from-25%), so even if a seam slipped through it is black-on-black and cannot show. */}
       <div className="absolute inset-0 overflow-hidden">
         <ImageWithFallback
           src={meta?.image ?? FALLBACK_IMG}
@@ -39,7 +41,7 @@ function Tile({ category }: { category: Category }) {
           height={576}
           className="pointer-events-none absolute inset-0 size-full transform-gpu object-cover opacity-90 saturate-[0.85] transition-all duration-700 ease-out [backface-visibility:hidden] group-hover:scale-105 group-hover:opacity-100 group-hover:saturate-100 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black from-25% via-black/70 to-transparent" />
       </div>
       <span aria-hidden className="absolute right-0 top-0 z-10 flex size-11 items-center justify-center bg-brand text-white transition-all duration-300 group-hover:size-12 motion-reduce:transition-none">
         <ArrowUpRight className="size-5" />
