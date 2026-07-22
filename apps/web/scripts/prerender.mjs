@@ -346,7 +346,7 @@ await writeFile(
   path.join(DIST, "robots.txt"),
   // Disallow the free-text search and sort permutations: they are unbounded URL variants that
   // canonicals collapse only AFTER each is crawled, wasting crawl budget on duplicates.
-  `User-agent: *\nAllow: /\nDisallow: /*?q=\nDisallow: /*?sort=\n\nSitemap: ${SITE}/sitemap.xml\n`,
+  `User-agent: *\nAllow: /\nDisallow: /*?q=\nDisallow: /*?sort=\nDisallow: /*?instock=\n\nSitemap: ${SITE}/sitemap.xml\n`,
   "utf8",
 );
 

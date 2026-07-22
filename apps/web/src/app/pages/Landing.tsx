@@ -18,7 +18,7 @@ import {
   getStockedParentSlugs,
 } from "../data/api";
 import { formatDate } from "@360/lib/format";
-import { whatsappGeneralUrl } from "@360/lib/whatsapp";
+import { whatsappGeneralUrl, WHATSAPP_DISPLAY } from "@360/lib/whatsapp";
 import { useDocumentMeta } from "../lib/head";
 import { imageUrl } from "@360/supabase";
 import { supabase } from "../data/supabase";
@@ -252,7 +252,7 @@ export function Landing() {
               className="h-12 rounded-sm bg-brand px-8 font-heading text-sm font-bold uppercase tracking-[0.2em] text-white hover:bg-brand-hover"
             >
               <Link to="/catalogue">
-                Shop Now <ArrowRight className="size-4" />
+                Browse Parts <ArrowRight className="size-4" />
               </Link>
             </Button>
             <a
@@ -264,6 +264,11 @@ export function Landing() {
               <MessageCircle className="size-4" /> Talk To Us
             </a>
           </div>
+          {/* Set the (cartless) ordering model in the first viewport — "Shop" implies a checkout
+              this store doesn't have, which is a common source of bounce. */}
+          <p className="mt-5 font-body text-xs text-white/55">
+            No cart, no checkout — order in one message on WhatsApp.
+          </p>
         </div>
 
         {/* bottom bar — quick stats */}
@@ -304,9 +309,9 @@ export function Landing() {
       <section className="bg-black text-white">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <SectionTitle
-            eyebrow="360 Performance"
-            title="Performance"
-            tagline="Relied on by Pakistan's most influential motorsport experts."
+            eyebrow="Browse"
+            title="Shop by Category"
+            tagline="Genuine performance parts for every corner of your build."
             invert
           />
           <CategoryGrid />
@@ -320,7 +325,7 @@ export function Landing() {
           "360 Performance",
           "Premium Performance Parts",
           "Shipped Across Pakistan",
-          "Order On WhatsApp",
+          "Genuine · Hand-Picked",
         ]}
       />
 
@@ -621,7 +626,47 @@ export function Landing() {
             ))}
           </div>
           <p className="mt-6 font-heading text-xs font-bold uppercase tracking-[0.35em] text-zinc-500">
-            Performance Parts · 1 Brand · Built In Pakistan
+            Genuine Parts · Shipped Nationwide · Built In Pakistan
+          </p>
+        </div>
+      </section>
+
+      {/* ──────────────────────────────────────────────────────────────
+          CLOSING CTA — the page used to end on prose and never ask for the order.
+         ──────────────────────────────────────────────────────────────*/}
+      <section className="bg-black text-white">
+        <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6 lg:px-8 lg:py-20">
+          <p className="font-heading text-xs font-bold uppercase tracking-[0.4em] text-brand">
+            Ready When You Are
+          </p>
+          <h2
+            className="mt-3 font-heading font-bold uppercase leading-none tracking-tight text-white"
+            style={{ fontSize: "clamp(1.75rem, 4vw, 3rem)" }}
+          >
+            Order In One Message
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl font-body text-sm text-white/70 sm:text-base">
+            No cart, no account. Send us the part and a real person confirms price, fitment and
+            delivery on WhatsApp.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <a
+              href={whatsappGeneralUrl()}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-12 items-center gap-2 rounded-sm bg-brand px-8 font-heading text-sm font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <MessageCircle className="size-4" /> Order on WhatsApp
+            </a>
+            <Link
+              to="/catalogue"
+              className="inline-flex h-12 items-center gap-2 rounded-sm border border-white/30 px-8 font-heading text-sm font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-white hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              Browse Parts
+            </Link>
+          </div>
+          <p className="mt-6 font-heading text-sm font-bold tracking-wide text-white/80">
+            {WHATSAPP_DISPLAY}
           </p>
         </div>
       </section>

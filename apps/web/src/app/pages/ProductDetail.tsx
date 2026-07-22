@@ -183,12 +183,16 @@ export function ProductDetail() {
             {!hasPrice(product.pricePKR) ? (
               <span className="font-heading text-3xl font-bold text-foreground">Price on request</span>
             ) : hasPrice(product.salePricePKR) && product.salePricePKR! < product.pricePKR ? (
-              <span className="flex items-baseline gap-2">
+              <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                {/* Red is reserved for the sale price. */}
                 <span className="font-heading text-3xl font-bold text-brand">{formatPKR(product.salePricePKR)}</span>
                 <span className="font-body text-lg text-muted-foreground line-through">{formatPKR(product.pricePKR)}</span>
+                <span className="self-center rounded bg-brand/10 px-2 py-0.5 font-heading text-xs font-bold uppercase tracking-wide text-brand">
+                  Save {formatPKR(product.pricePKR - product.salePricePKR!)} · {Math.round((1 - product.salePricePKR! / product.pricePKR) * 100)}%
+                </span>
               </span>
             ) : (
-              <span className="font-heading text-3xl font-bold text-brand">{formatPKR(product.pricePKR)}</span>
+              <span className="font-heading text-3xl font-bold text-foreground">{formatPKR(product.pricePKR)}</span>
             )}
             <AvailabilityBadge availability={product.availability} count={product.stockQty} />
           </div>
@@ -205,12 +209,12 @@ export function ProductDetail() {
               <button
                 type="button"
                 aria-disabled="true"
-                aria-label={`${product.name} — out of stock`}
+                aria-label={`${product.name} — sold out`}
                 onClick={(e) => e.preventDefault()}
                 className="flex h-14 cursor-not-allowed items-center justify-center gap-3 rounded-md bg-muted px-8 font-heading text-base font-bold uppercase tracking-wide text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
               >
                 <MessageCircle className="size-5" aria-hidden />
-                Out of Stock
+                Sold Out
               </button>
             ) : (
               <a

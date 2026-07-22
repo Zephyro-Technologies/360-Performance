@@ -106,6 +106,9 @@ export function ProductCard({
               <span className={`font-body text-xs line-through ${dark ? "text-white/40" : "text-zinc-400"}`}>
                 {formatPKR(product.pricePKR)}
               </span>
+              <span className="rounded bg-brand/10 px-1.5 py-0.5 font-heading text-[10px] font-bold text-brand">
+                −{Math.round((1 - product.salePricePKR / product.pricePKR) * 100)}%
+              </span>
             </>
           ) : (
             <span className={`font-heading font-bold ${dark ? "text-white" : "text-black"}`}>

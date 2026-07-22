@@ -4,7 +4,8 @@ export const AVAILABILITY_LABELS: Record<Availability, string> = {
   "in-stock": "In Stock",
   "low-stock": "Low Stock",
   "made-to-order": "Made to Order",
-  "out-of-stock": "Out of Stock",
+  // "Sold Out" (warmer, shorter) everywhere, so the badge and the CTA button agree.
+  "out-of-stock": "Sold Out",
 };
 
 // Tailwind classes for the availability badge dot/text.

@@ -117,7 +117,9 @@ export function Catalogue() {
 
   const metaCategory = category !== "all" ? categories.find((c) => c.slug === category) : undefined;
 
-  const [inStockOnly, setInStockOnly] = useState(false);
+  // In a URL param (?instock=1), not local state, so a filtered link shared on WhatsApp — the
+  // primary distribution channel — keeps the filter and survives a refresh.
+  const inStockOnly = searchParams.get("instock") === "1";
   const [result, setResult] = useState<CatalogueResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -183,10 +185,14 @@ export function Catalogue() {
   const activeCategory = categories.find((c) => c.slug === category);
   const heading = activeCategory ? activeCategory.name : "All Products";
 
-  const resetAll = () => {
-    setInStockOnly(false);
-    // Clears the category (path) and all query filters.
-    navigate("/catalogue");
+  // Clears the category (path) and all query filters, including ?instock.
+  const resetAll = () => navigate("/catalogue");
+
+  // Pagination scrolls back to the top of the results — ScrollManager only reacts to pathname and
+  // hash, so a ?page= change left the visitor parked at the bottom looking at the new page's tail.
+  const goToPage = (p: number) => {
+    update({ page: String(p) }, false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const hasActiveFilters =
@@ -210,10 +216,10 @@ export function Catalogue() {
           <Checkbox
             id="hide-out-of-stock"
             checked={inStockOnly}
-            onCheckedChange={(v) => setInStockOnly(Boolean(v))}
+            onCheckedChange={(v) => update({ instock: v ? "1" : null })}
           />
           <label htmlFor="hide-out-of-stock" className="cursor-pointer font-body text-sm">
-            Hide out of stock
+            Hide sold out
           </label>
         </div>
       </div>
@@ -335,8 +341,8 @@ export function Catalogue() {
               )}
               {inStockOnly && (
                 <FilterChip
-                  label="In stock only"
-                  onRemove={() => setInStockOnly(false)}
+                  label="Hide sold out"
+                  onRemove={() => update({ instock: null })}
                 />
               )}
               <button
@@ -385,7 +391,7 @@ export function Catalogue() {
                     variant="outline"
                     size="icon"
                     disabled={result.page <= 1}
-                    onClick={() => update({ page: String(result.page - 1) }, false)}
+                    onClick={() => goToPage(result.page - 1)}
                     aria-label="Previous page"
                   >
                     <ChevronLeft className="size-4" />
@@ -403,7 +409,7 @@ export function Catalogue() {
                       <button
                         key={p}
                         type="button"
-                        onClick={() => update({ page: String(p) }, false)}
+                        onClick={() => goToPage(p)}
                         aria-current={p === result.page ? "page" : undefined}
                         className={`size-11 rounded-md font-heading text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                           p === result.page
@@ -419,7 +425,7 @@ export function Catalogue() {
                     variant="outline"
                     size="icon"
                     disabled={result.page >= result.totalPages}
-                    onClick={() => update({ page: String(result.page + 1) }, false)}
+                    onClick={() => goToPage(result.page + 1)}
                     aria-label="Next page"
                   >
                     <ChevronRight className="size-4" />
@@ -441,10 +447,7 @@ export function Catalogue() {
                   <button
                     key={g.parent.id}
                     type="button"
-                    onClick={() => {
-                      setInStockOnly(false);
-                      navigate(`/catalogue/${g.parent.slug}`);
-                    }}
+                    onClick={() => navigate(`/catalogue/${g.parent.slug}`)}
                     className="border border-zinc-300 px-4 py-2 font-heading text-xs font-bold uppercase tracking-[0.25em] text-zinc-700 transition-colors hover:border-black hover:bg-black hover:text-white"
                   >
                     {g.parent.name}
