@@ -36,8 +36,8 @@ export function ProductCard({
     >
       <Link
         to={`/product/${product.slug}`}
-        className={`relative block aspect-square overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${
-          dark ? "bg-black" : "bg-zinc-50"
+        className={`relative block aspect-square overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 ${
+          dark ? "bg-black focus-visible:outline-white" : "bg-zinc-50 focus-visible:outline-brand"
         }`}
       >
         <ImageWithFallback
@@ -76,7 +76,9 @@ export function ProductCard({
         </span>
         <Link
           to={`/product/${product.slug}`}
-          className="focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+          className={`rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 ${
+            dark ? "focus-visible:outline-white" : "focus-visible:outline-brand"
+          }`}
         >
           <h3
             /* line-clamp does not break long words — break-words does. */
@@ -112,30 +114,39 @@ export function ProductCard({
           )}
         </div>
 
-        <a
-          href={soldOut ? undefined : whatsappOrderUrl({ ...product, url: productUrl(product.slug) })}
-          target="_blank"
-          rel="noreferrer"
-          aria-disabled={soldOut}
-          aria-label={
-            soldOut
-              ? `${product.name} — currently sold out`
-              : `Order ${product.name} on WhatsApp`
-          }
-          onClick={(e) => {
-            if (soldOut) e.preventDefault();
-          }}
-          className={`mt-4 flex items-center justify-center gap-2 px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[0.2em] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${
-            soldOut
-              ? "cursor-not-allowed bg-zinc-200 text-zinc-500"
-              : dark
-                ? "border border-white/20 text-white hover:border-brand hover:bg-brand"
-                : "bg-black text-white hover:bg-brand"
-          }`}
-        >
-          <MessageCircle className="size-3.5" />
-          {soldOut ? "Sold Out" : "Order on WhatsApp"}
-        </a>
+        {/* A sold-out CTA must still be a real, focusable control. As an <a> with no href it had
+            role="generic": it dropped out of the tab order, and aria-disabled + aria-label were
+            both ignored, so keyboard and screen-reader users got nothing at all. A disabled
+            <button> keeps the state focusable and announced. */}
+        {soldOut ? (
+          <button
+            type="button"
+            aria-disabled="true"
+            aria-label={`${product.name} — currently sold out`}
+            onClick={(e) => e.preventDefault()}
+            className={`mt-4 flex cursor-not-allowed items-center justify-center gap-2 bg-zinc-200 px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[0.2em] text-zinc-500 focus-visible:outline-2 focus-visible:outline-offset-2 ${
+              dark ? "focus-visible:outline-white" : "focus-visible:outline-brand"
+            }`}
+          >
+            <MessageCircle className="size-3.5" aria-hidden />
+            Sold Out
+          </button>
+        ) : (
+          <a
+            href={whatsappOrderUrl({ ...product, url: productUrl(product.slug) })}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Order ${product.name} on WhatsApp`}
+            className={`mt-4 flex items-center justify-center gap-2 px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[0.2em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
+              dark
+                ? "border border-white/20 text-white hover:border-brand hover:bg-brand focus-visible:outline-white"
+                : "bg-black text-white hover:bg-brand focus-visible:outline-brand"
+            }`}
+          >
+            <MessageCircle className="size-3.5" aria-hidden />
+            Order on WhatsApp
+          </a>
+        )}
       </div>
     </div>
   );

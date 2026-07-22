@@ -156,13 +156,19 @@ export function Catalogue() {
 
       <div>
         <h4 className="mb-2 font-heading text-xs font-bold uppercase tracking-[0.2em] text-zinc-500">Availability</h4>
-        <label className="flex cursor-pointer items-center gap-2">
+        {/* Radix Checkbox renders a <button role="checkbox">, not a labelable form control, so an
+            implicit wrapping <label> left it with NO accessible name. id + htmlFor associates them
+            explicitly (and makes the visible text a hit target). */}
+        <div className="flex items-center gap-2">
           <Checkbox
+            id="hide-out-of-stock"
             checked={inStockOnly}
             onCheckedChange={(v) => setInStockOnly(Boolean(v))}
           />
-          <span className="font-body text-sm">Hide out of stock</span>
-        </label>
+          <label htmlFor="hide-out-of-stock" className="cursor-pointer font-body text-sm">
+            Hide out of stock
+          </label>
+        </div>
       </div>
 
       {hasActiveFilters && (
@@ -352,7 +358,7 @@ export function Catalogue() {
                         type="button"
                         onClick={() => update({ page: String(p) }, false)}
                         aria-current={p === result.page ? "page" : undefined}
-                        className={`size-11 rounded-md font-heading text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+                        className={`size-11 rounded-md font-heading text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                           p === result.page
                             ? "bg-brand text-white"
                             : "border border-border text-foreground hover:bg-accent"
@@ -429,7 +435,7 @@ function FilterChip({
         type="button"
         onClick={onRemove}
         aria-label={`Remove filter: ${label}`}
-        className="-mr-1 rounded-sm p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        className="-mr-1 rounded-sm p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
         <X className="size-3.5" />
       </button>

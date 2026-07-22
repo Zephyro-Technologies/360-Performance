@@ -399,7 +399,7 @@ export function Landing() {
                   type="button"
                   onClick={() => setActiveTab(t.id)}
                   aria-pressed={active}
-                  className={`whitespace-nowrap border-b-2 px-4 py-2.5 font-heading text-sm font-bold uppercase tracking-[0.15em] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+                  className={`whitespace-nowrap border-b-2 px-4 py-2.5 font-heading text-sm font-bold uppercase tracking-[0.15em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                     active
                       ? "border-brand text-black"
                       : "border-transparent text-zinc-500 hover:text-black"

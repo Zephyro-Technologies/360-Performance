@@ -16,7 +16,10 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    // A plain <div>, not <header>: several browser/AT combinations still expose an in-content
+    // <header> as a second `banner` landmark alongside the site header, and this block carries no
+    // landmark meaning of its own.
+    <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
       <div>
         {eyebrow && (
           <p className="font-heading text-xs font-bold uppercase tracking-[0.4em] text-zinc-500">
@@ -37,6 +40,6 @@ export function PageHeader({
         )}
       </div>
       {action && <div className="shrink-0">{action}</div>}
-    </header>
+    </div>
   );
 }

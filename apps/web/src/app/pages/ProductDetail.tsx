@@ -196,25 +196,33 @@ export function ProductDetail() {
             <p className="mt-6 font-body text-foreground/80">{product.description}</p>
           )}
 
-          {/* Order CTA */}
+          {/* Order CTA. A sold-out state is a real, focusable <button> — as an hrefless <a> it
+              had role="generic", so it left the tab order and its disabled state was never
+              announced. */}
           <div className="mt-8 flex flex-col gap-3">
-            <a
-              href={soldOut ? undefined : whatsappOrderUrl({ ...product, url: productUrl(product.slug) })}
-              target="_blank"
-              rel="noreferrer"
-              aria-disabled={soldOut}
-              onClick={(e) => {
-                if (soldOut) e.preventDefault();
-              }}
-              className={`flex h-14 items-center justify-center gap-3 rounded-md px-8 font-heading text-base font-bold uppercase tracking-wide transition-colors ${
-                soldOut
-                  ? "cursor-not-allowed bg-muted text-muted-foreground"
-                  : "bg-brand text-white hover:bg-brand-hover"
-              }`}
-            >
-              <MessageCircle className="size-5" />
-              {soldOut ? "Out of Stock" : "Order on WhatsApp"}
-            </a>
+            {soldOut ? (
+              <button
+                type="button"
+                aria-disabled="true"
+                aria-label={`${product.name} — out of stock`}
+                onClick={(e) => e.preventDefault()}
+                className="flex h-14 cursor-not-allowed items-center justify-center gap-3 rounded-md bg-muted px-8 font-heading text-base font-bold uppercase tracking-wide text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              >
+                <MessageCircle className="size-5" aria-hidden />
+                Out of Stock
+              </button>
+            ) : (
+              <a
+                href={whatsappOrderUrl({ ...product, url: productUrl(product.slug) })}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Order ${product.name} on WhatsApp`}
+                className="flex h-14 items-center justify-center gap-3 rounded-md bg-brand px-8 font-heading text-base font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              >
+                <MessageCircle className="size-5" aria-hidden />
+                Order on WhatsApp
+              </a>
+            )}
             <p className="font-body text-xs text-muted-foreground">
               {product.availability === "made-to-order"
                 ? "Made to order — lead time confirmed by our team on WhatsApp before dispatch."
@@ -241,7 +249,9 @@ export function ProductDetail() {
           {/* Specs — hidden when empty; the heading over a 2px hairline box read as broken. */}
           {product.specs.length > 0 && (
           <div className="mt-8">
-            <h3 className="mb-3">Specifications</h3>
+            {/* h2, not h3: the outline was h1 (name) -> h3 (specs) -> h2 (related), skipping a
+                level. text-xl keeps the original h3 size. */}
+            <h2 className="mb-3 text-xl">Specifications</h2>
             <dl className="overflow-hidden rounded-lg border border-border">
               {product.specs.map((spec, i) => (
                 <div

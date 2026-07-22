@@ -13,7 +13,7 @@ export interface CategoryNavGroup {
 }
 
 const item =
-  "block w-full rounded-md text-left font-body transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 motion-reduce:transition-none";
+  "block w-full rounded-md text-left font-body transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none";
 
 export function CategoryNav({
   groups,
