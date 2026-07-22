@@ -438,20 +438,8 @@ export function Catalogue() {
               <div>
                 <h2 className="text-xl">No products found</h2>
                 <p className="mt-1 font-body text-sm text-muted-foreground">
-                  Try a different filter, or jump into a popular category.
+                  Try a different filter, or reset to see everything.
                 </p>
-              </div>
-              <div className="flex flex-wrap justify-center gap-2">
-                {parentGroups.slice(0, 3).map((g) => (
-                  <button
-                    key={g.parent.id}
-                    type="button"
-                    onClick={() => navigate(`/catalogue/${g.parent.slug}`)}
-                    className="border border-zinc-300 px-4 py-2 font-heading text-xs font-bold uppercase tracking-[0.25em] text-zinc-700 transition-colors hover:border-black hover:bg-black hover:text-white"
-                  >
-                    {g.parent.name}
-                  </button>
-                ))}
               </div>
               <Button
                 variant="outline"
