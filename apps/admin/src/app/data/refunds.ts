@@ -21,6 +21,7 @@ export interface RefundRow {
   deduction_cycle: RefundCycle;
   reason: string;
   order_id: string | null;
+  reverses_id: string | null; // set on a reversal row (negates the original it points at)
   orders: { order_no: string } | null;
 }
 
@@ -30,7 +31,7 @@ export function useRefunds() {
     queryFn: async (): Promise<RefundRow[]> => {
       const { data, error } = await supabase
         .from("refunds")
-        .select("id, amount_pkr, refunded_on, deduction_cycle, reason, order_id, orders(order_no)")
+        .select("id, amount_pkr, refunded_on, deduction_cycle, reason, order_id, reverses_id, orders(order_no)")
         .order("refunded_on", { ascending: false });
       if (error) throw new Error(friendlyError(error));
       return (data ?? []) as unknown as RefundRow[];
@@ -53,25 +54,33 @@ function invalidate(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["pnl-summary"] }); // refunds reduce "What you kept"
 }
 
-export function useSaveRefund() {
+// Create-only: refunds are an immutable ledger (no edit, no delete — see migration 090124).
+export function useCreateRefund() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, input }: { id?: string; input: RefundInput }) => {
+    mutationFn: async (input: RefundInput) => {
       const parsed = refundSchema.parse(input);
-      const res = id
-        ? await supabase.from("refunds").update(parsed).eq("id", id)
-        : await supabase.from("refunds").insert(parsed);
-      if (res.error) throw new Error(friendlyError(res.error));
+      const { error } = await supabase.from("refunds").insert(parsed);
+      if (error) throw new Error(friendlyError(error));
     },
     onSuccess: () => invalidate(qc),
   });
 }
 
-export function useDeleteRefund() {
+// Correcting a mistake = a signed reversal row (−original), netted in the ORIGINAL's period so
+// that month's numbers become right. The DB guard enforces the amount and one-reversal-per-row.
+export function useReverseRefund() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("refunds").delete().eq("id", id);
+    mutationFn: async (r: RefundRow) => {
+      const { error } = await supabase.from("refunds").insert({
+        amount_pkr: -r.amount_pkr,
+        refunded_on: r.refunded_on,
+        deduction_cycle: r.deduction_cycle,
+        reason: `Reversal of: ${r.reason}`,
+        order_id: r.order_id,
+        reverses_id: r.id,
+      });
       if (error) throw new Error(friendlyError(error));
     },
     onSuccess: () => invalidate(qc),

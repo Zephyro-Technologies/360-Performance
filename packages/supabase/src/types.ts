@@ -71,6 +71,7 @@ export type Database = {
           entity_id: string | null
           entity_type: string | null
           id: string
+          snapshot: Json | null
         }
         Insert: {
           action: string
@@ -81,6 +82,7 @@ export type Database = {
           entity_id?: string | null
           entity_type?: string | null
           id?: string
+          snapshot?: Json | null
         }
         Update: {
           action?: string
@@ -91,6 +93,7 @@ export type Database = {
           entity_id?: string | null
           entity_type?: string | null
           id?: string
+          snapshot?: Json | null
         }
         Relationships: []
       }
@@ -248,6 +251,7 @@ export type Database = {
           kind: Database["public"]["Enums"]["marketing_type"]
           note: string | null
           recipient: string | null
+          reverses_id: string | null
           spent_on: string
         }
         Insert: {
@@ -257,6 +261,7 @@ export type Database = {
           kind?: Database["public"]["Enums"]["marketing_type"]
           note?: string | null
           recipient?: string | null
+          reverses_id?: string | null
           spent_on?: string
         }
         Update: {
@@ -266,9 +271,18 @@ export type Database = {
           kind?: Database["public"]["Enums"]["marketing_type"]
           note?: string | null
           recipient?: string | null
+          reverses_id?: string | null
           spent_on?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cash_marketing_reverses_id_fkey"
+            columns: ["reverses_id"]
+            isOneToOne: false
+            referencedRelation: "cash_marketing"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       categories: {
         Row: {
@@ -520,6 +534,7 @@ export type Database = {
           note: string | null
           order_id: string | null
           paid_on: string | null
+          reverses_id: string | null
         }
         Insert: {
           amount_pkr: number
@@ -531,6 +546,7 @@ export type Database = {
           note?: string | null
           order_id?: string | null
           paid_on?: string | null
+          reverses_id?: string | null
         }
         Update: {
           amount_pkr?: number
@@ -542,6 +558,7 @@ export type Database = {
           note?: string | null
           order_id?: string | null
           paid_on?: string | null
+          reverses_id?: string | null
         }
         Relationships: [
           {
@@ -556,6 +573,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_deliveries_reverses_id_fkey"
+            columns: ["reverses_id"]
+            isOneToOne: false
+            referencedRelation: "customer_deliveries"
             referencedColumns: ["id"]
           },
         ]
@@ -2388,6 +2412,7 @@ export type Database = {
           order_id: string | null
           reason: string
           refunded_on: string
+          reverses_id: string | null
         }
         Insert: {
           amount_pkr: number
@@ -2398,6 +2423,7 @@ export type Database = {
           order_id?: string | null
           reason: string
           refunded_on?: string
+          reverses_id?: string | null
         }
         Update: {
           amount_pkr?: number
@@ -2408,6 +2434,7 @@ export type Database = {
           order_id?: string | null
           reason?: string
           refunded_on?: string
+          reverses_id?: string | null
         }
         Relationships: [
           {
@@ -2422,6 +2449,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_reverses_id_fkey"
+            columns: ["reverses_id"]
+            isOneToOne: false
+            referencedRelation: "refunds"
             referencedColumns: ["id"]
           },
         ]
@@ -3257,6 +3291,7 @@ export type Database = {
           slug: string | null
           specs: Json | null
           stock_qty: number | null
+          updated_at: string | null
         }
         Relationships: [
           {
@@ -3669,6 +3704,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      mark_delivery_paid: { Args: { p_id: string }; Returns: undefined }
       next_product_sku: { Args: { p_category_id: string }; Returns: string }
       pnl_summary_between: {
         Args: { p_end: string; p_start: string }

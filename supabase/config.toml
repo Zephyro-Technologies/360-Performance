@@ -212,9 +212,11 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Invite-only (Phase 8): no public email signups; invites use the admin API.
-# LOCAL DEV ONLY — enables the email provider so password login works. Do NOT commit as true.
-enable_signup = true
+# Invite-only: NO public email signups in any environment. Cloud users are created via the
+# admin API (admin-users edge fn); local dev users come from seed.sql. Login for existing users
+# is unaffected by this flag. Kept false because handle_new_user bootstraps the FIRST user as
+# admin — a public signup that reached cloud would hand admin to whoever signed up first.
+enable_signup = false
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true

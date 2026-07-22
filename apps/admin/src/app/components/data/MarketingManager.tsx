@@ -2,7 +2,7 @@
 // that "What you kept" subtracts. PR gifts give away HOUSE stock (drawn FIFO at landed cost);
 // cash marketing is pure spend. Internal.
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Gift, Banknote, Trash2, Search } from "lucide-react";
+import { Plus, Gift, Banknote, Undo2, Search } from "lucide-react";
 import { toast } from "sonner";
 import {
   useMarketingSpend,
@@ -11,7 +11,8 @@ import {
   useUpdatePrGift,
   useCashMarketing,
   useAddCashMarketing,
-  useDeleteCashMarketing,
+  useReverseCashMarketing,
+  type CashMarketing,
   MARKETING_TYPE_LABEL,
   PR_STATUS_LABEL,
   PR_STATUS_FLOW,
@@ -59,7 +60,7 @@ export function MarketingManager() {
       </div>
 
       <PrGiftsSection canEdit={can("edit")} onRecord={() => setGiftOpen(true)} />
-      <CashSection canEdit={can("edit")} canDelete={can("delete")} onAdd={() => setCashOpen(true)} />
+      <CashSection canEdit={can("edit")} onAdd={() => setCashOpen(true)} />
 
       <RecordGiftDialog open={giftOpen} onOpenChange={setGiftOpen} />
       <CashDialog open={cashOpen} onOpenChange={setCashOpen} />
@@ -142,11 +143,12 @@ function PrGiftsSection({ canEdit, onRecord }: { canEdit: boolean; onRecord: () 
   );
 }
 
-function CashSection({ canEdit, canDelete, onAdd }: { canEdit: boolean; canDelete: boolean; onAdd: () => void }) {
+function CashSection({ canEdit, onAdd }: { canEdit: boolean; onAdd: () => void }) {
   const cashQ = useCashMarketing();
-  const del = useDeleteCashMarketing();
+  const rev = useReverseCashMarketing();
   const confirm = useConfirm();
   const rows = cashQ.data ?? [];
+  const reversedIds = new Set(rows.map((r) => r.reverses_id).filter(Boolean) as string[]);
   const sort = useTableSort(rows, {
     date: (r) => r.spent_on,
     type: (r) => MARKETING_TYPE_LABEL[r.kind],
@@ -155,9 +157,9 @@ function CashSection({ canEdit, canDelete, onAdd }: { canEdit: boolean; canDelet
     note: (r) => r.note,
   }, "date", "desc");
 
-  async function remove(id: string) {
-    if (!(await confirm({ title: "Remove this marketing entry?", confirmLabel: "Remove", destructive: true }))) return;
-    try { await del.mutateAsync(id); toast.success("Removed"); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not remove"); }
+  async function reverse(r: CashMarketing) {
+    if (!(await confirm({ title: `Reverse this ${formatPKR(r.amount_pkr)} marketing spend?`, description: "This posts a matching reversal that cancels it out. The original stays on the ledger.", destructive: true }))) return;
+    try { await rev.mutateAsync(r); toast.success("Reversed"); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not reverse"); }
   }
 
   return (
@@ -179,16 +181,28 @@ function CashSection({ canEdit, canDelete, onAdd }: { canEdit: boolean; canDelet
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sort.sorted.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(r.spent_on)}</TableCell>
-                <TableCell>{MARKETING_TYPE_LABEL[r.kind]}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatPKR(r.amount_pkr)}</TableCell>
-                <TableCell>{r.recipient ?? "—"}</TableCell>
-                <TableCell className="max-w-xs truncate text-muted-foreground">{r.note ?? "—"}</TableCell>
-                <TableCell>{canDelete && <Button variant="ghost" size="icon" className="size-8" onClick={() => remove(r.id)}><Trash2 className="size-4 text-[#cc0000]" /></Button>}</TableCell>
-              </TableRow>
-            ))}
+            {sort.sorted.map((r) => {
+              const isReversal = r.reverses_id !== null;
+              const isReversed = reversedIds.has(r.id);
+              return (
+                <TableRow key={r.id} className={isReversal || isReversed ? "opacity-60" : undefined}>
+                  <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(r.spent_on)}</TableCell>
+                  <TableCell>{MARKETING_TYPE_LABEL[r.kind]}</TableCell>
+                  <TableCell className={`text-right tabular-nums ${r.amount_pkr < 0 ? "text-emerald-600" : ""}`}>{formatPKR(r.amount_pkr)}</TableCell>
+                  <TableCell>{r.recipient ?? "—"}</TableCell>
+                  <TableCell className="max-w-xs truncate text-muted-foreground">{r.note ?? "—"}</TableCell>
+                  <TableCell className="text-right">
+                    {isReversal ? (
+                      <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">Reversal</span>
+                    ) : isReversed ? (
+                      <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">Reversed</span>
+                    ) : canEdit ? (
+                      <Button variant="ghost" size="icon" className="size-8" title="Reverse" onClick={() => reverse(r)}><Undo2 className="size-4 text-[#cc0000]" /></Button>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
         {cashQ.isLoading && <p className="p-6 text-center text-muted-foreground">Loading…</p>}

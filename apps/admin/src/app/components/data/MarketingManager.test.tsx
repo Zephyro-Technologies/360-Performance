@@ -10,7 +10,7 @@ vi.mock("../../data/marketing", async (orig) => ({
   useUpdatePrGift: () => ({ mutateAsync: vi.fn() }),
   useCashMarketing: () => ({ data: [], isLoading: false }),
   useAddCashMarketing: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useDeleteCashMarketing: () => ({ mutateAsync: vi.fn() }),
+  useReverseCashMarketing: () => ({ mutateAsync: vi.fn() }),
 }));
 vi.mock("../../data/catalog", () => ({
   useProducts: () => ({

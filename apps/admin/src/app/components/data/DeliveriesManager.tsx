@@ -1,15 +1,16 @@
-// Customer delivery costs — a ledger of last-mile courier bills to send orders to customers.
-// Each entry has an owed→paid state (so "payments owed" to couriers is visible) and can be
-// backdated for late bills. Reduces profit (operating expense). Local/inbound shipping is NOT
-// here — that stays in product landed cost. Lives in Data Management → Delivery.
+// Customer delivery costs — an IMMUTABLE ledger of last-mile courier bills to send orders to
+// customers. Each entry has an owed→paid state (so "payments owed" to couriers is visible) and
+// can be backdated for late bills. Reduces profit (operating expense). Entries are never edited
+// or deleted — mark an owed one paid, or reverse a mistake. Local/inbound shipping is NOT here —
+// that stays in product landed cost. Lives in Data Management → Delivery.
 import { useEffect, useState } from "react";
-import { Check, Pencil, Plus, Trash2, Undo2, Search } from "lucide-react";
+import { Check, Plus, Undo2, Search } from "lucide-react";
 import { toast } from "sonner";
 import {
   useDeliveries,
-  useSaveDelivery,
-  useDeleteDelivery,
-  useSetDeliveryPaid,
+  useCreateDelivery,
+  useReverseDelivery,
+  useMarkDeliveryPaid,
   type DeliveryRow,
   type DeliveryInput,
 } from "../../data/deliveries";
@@ -31,15 +32,17 @@ function today() { return new Date().toISOString().slice(0, 10); }
 
 export function DeliveriesManager() {
   const deliveriesQ = useDeliveries();
-  const del = useDeleteDelivery();
-  const setPaid = useSetDeliveryPaid();
+  const rev = useReverseDelivery();
+  const markPaid = useMarkDeliveryPaid();
   const { can } = useAuth();
-  const [edit, setEdit] = useState<DeliveryRow | null>(null);
   const [open, setOpen] = useState(false);
-
   const [q, setQ] = useState("");
+  const confirm = useConfirm();
+
   const rows = deliveriesQ.data ?? [];
-  const owed = rows.filter((r) => !r.paid_on).reduce((s, r) => s + Number(r.amount_pkr), 0);
+  const reversedIds = new Set(rows.map((r) => r.reverses_id).filter(Boolean) as string[]);
+  // Still owed = unpaid originals that haven't been reversed.
+  const owed = rows.filter((r) => !r.reverses_id && !r.paid_on && !reversedIds.has(r.id)).reduce((s, r) => s + Number(r.amount_pkr), 0);
   const term = q.trim().toLowerCase();
   const filtered = rows.filter((r) => !term || (r.courier ?? "").toLowerCase().includes(term) || (r.orders?.order_no ?? "").toLowerCase().includes(term) || (r.note ?? "").toLowerCase().includes(term));
   const sort = useTableSort(filtered, {
@@ -51,26 +54,21 @@ export function DeliveriesManager() {
     note: (r) => r.note,
   }, "date", "desc");
 
-  function openNew() { setEdit(null); setOpen(true); }
-  function openEdit(r: DeliveryRow) { setEdit(r); setOpen(true); }
-
-  const confirm = useConfirm();
-
-  async function togglePaid(r: DeliveryRow) {
+  async function paid(r: DeliveryRow) {
     try {
-      await setPaid.mutateAsync({ id: r.id, paid_on: r.paid_on ? null : today() });
-      toast.success(r.paid_on ? "Marked as owed" : "Marked as paid");
+      await markPaid.mutateAsync(r.id);
+      toast.success("Marked as paid");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not update");
     }
   }
-  async function remove(r: DeliveryRow) {
-    if (!(await confirm({ title: `Delete this delivery cost of ${formatPKR(r.amount_pkr)}?`, destructive: true }))) return;
+  async function reverse(r: DeliveryRow) {
+    if (!(await confirm({ title: `Reverse this delivery cost of ${formatPKR(r.amount_pkr)}?`, description: "This posts a matching reversal that cancels it out. The original stays on the ledger.", destructive: true }))) return;
     try {
-      await del.mutateAsync(r.id);
-      toast.success("Delivery cost deleted");
+      await rev.mutateAsync(r);
+      toast.success("Delivery cost reversed");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not delete");
+      toast.error(e instanceof Error ? e.message : "Could not reverse");
     }
   }
 
@@ -82,7 +80,7 @@ export function DeliveriesManager() {
           Owed to couriers: <span className="font-medium text-foreground tabular-nums">{formatPKR(owed)}</span>.
         </p>
         {can("edit") && (
-          <Button className="bg-[#cc0000] text-white hover:bg-[#a30000]" onClick={openNew}>
+          <Button className="bg-[#cc0000] text-white hover:bg-[#a30000]" onClick={() => setOpen(true)}>
             <Plus className="size-4" /> Record Delivery Cost
           </Button>
         )}
@@ -103,35 +101,50 @@ export function DeliveriesManager() {
               <SortHead label="Order" sortKey="order" sort={sort} className="text-white" />
               <SortHead label="Status" sortKey="status" sort={sort} className="text-white" />
               <SortHead label="Note" sortKey="note" sort={sort} className="text-white" />
-              <TableHead className="text-white w-20"></TableHead>
+              <TableHead className="text-white w-28"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sort.sorted.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(r.billed_on)}</TableCell>
-                <TableCell className="tabular-nums text-[#cc0000]">{formatPKR(r.amount_pkr)}</TableCell>
-                <TableCell className="text-muted-foreground">{r.courier ?? "—"}</TableCell>
-                <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">{r.orders?.order_no ?? "—"}</TableCell>
-                <TableCell>
-                  <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium", r.paid_on ? "border-green-200 bg-green-50 text-green-700" : "border-amber-200 bg-amber-50 text-amber-700")}>
-                    {r.paid_on ? "Paid" : "Owed"}
-                  </span>
-                </TableCell>
-                <TableCell className="max-w-xs truncate text-muted-foreground">{r.note}</TableCell>
-                <TableCell>
-                  {can("edit") && (
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="size-8" title={r.paid_on ? "Mark as owed" : "Mark as paid"} onClick={() => togglePaid(r)}>
-                        {r.paid_on ? <Undo2 className="size-4 text-muted-foreground" /> : <Check className="size-4 text-green-600" />}
-                      </Button>
-                      <Button variant="ghost" size="icon" className="size-8" onClick={() => openEdit(r)}><Pencil className="size-4" /></Button>
-                      {can("delete") && <Button variant="ghost" size="icon" className="size-8" onClick={() => remove(r)}><Trash2 className="size-4 text-[#cc0000]" /></Button>}
-                    </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+            {sort.sorted.map((r) => {
+              const isReversal = r.reverses_id !== null;
+              const isReversed = reversedIds.has(r.id);
+              return (
+                <TableRow key={r.id} className={isReversal || isReversed ? "opacity-60" : undefined}>
+                  <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(r.billed_on)}</TableCell>
+                  <TableCell className={`tabular-nums ${r.amount_pkr < 0 ? "text-emerald-600" : "text-[#cc0000]"}`}>{formatPKR(r.amount_pkr)}</TableCell>
+                  <TableCell className="text-muted-foreground">{r.courier ?? "—"}</TableCell>
+                  <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">{r.orders?.order_no ?? "—"}</TableCell>
+                  <TableCell>
+                    {isReversal ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : (
+                      <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium", r.paid_on ? "border-green-200 bg-green-50 text-green-700" : "border-amber-200 bg-amber-50 text-amber-700")}>
+                        {r.paid_on ? "Paid" : "Owed"}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="max-w-xs truncate text-muted-foreground">{r.note}</TableCell>
+                  <TableCell>
+                    {isReversal ? (
+                      <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">Reversal</span>
+                    ) : isReversed ? (
+                      <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">Reversed</span>
+                    ) : can("edit") ? (
+                      <div className="flex gap-1">
+                        {!r.paid_on && (
+                          <Button variant="ghost" size="icon" className="size-8" title="Mark as paid" onClick={() => paid(r)}>
+                            <Check className="size-4 text-green-600" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="size-8" title="Reverse" onClick={() => reverse(r)}>
+                          <Undo2 className="size-4 text-[#cc0000]" />
+                        </Button>
+                      </div>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
         {deliveriesQ.isLoading && <p className="p-6 text-center text-muted-foreground">Loading…</p>}
@@ -139,13 +152,13 @@ export function DeliveriesManager() {
         {!deliveriesQ.isLoading && rows.length === 0 && <p className="p-6 text-center text-muted-foreground">No delivery costs logged yet.</p>}
       </div>
 
-      <DeliveryDialog delivery={edit} open={open} onOpenChange={setOpen} />
+      <DeliveryDialog open={open} onOpenChange={setOpen} />
     </div>
   );
 }
 
-function DeliveryDialog({ delivery, open, onOpenChange }: { delivery: DeliveryRow | null; open: boolean; onOpenChange: (o: boolean) => void }) {
-  const save = useSaveDelivery();
+function DeliveryDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const create = useCreateDelivery();
   const ordersQ = useOrders();
   const [amount, setAmount] = useState("");
   const [billedOn, setBilledOn] = useState("");
@@ -155,34 +168,32 @@ function DeliveryDialog({ delivery, open, onOpenChange }: { delivery: DeliveryRo
   const [paid, setPaid] = useState(false);
   const [key, setKey] = useState(0);
 
-  // Reset the form to the row being edited (or blank) whenever the dialog opens. Must be an effect,
-  // not the Dialog's onOpenChange: the parent opens the dialog by flipping `open`, and Radix fires
-  // onOpenChange only on user-driven close events — so a change handler never runs on open, and the
-  // form would keep (and save) the previously-typed values against this row.
+  // Reset to blank on open. Must be an effect, not onOpenChange: the parent opens by flipping
+  // `open`, and Radix fires onOpenChange only on user-driven close — so the form would otherwise
+  // keep previously-typed values.
   useEffect(() => {
     if (!open) return;
-    setAmount(delivery ? String(delivery.amount_pkr) : "");
-    setBilledOn(delivery?.billed_on ?? "");
-    setCourier(delivery?.courier ?? "");
-    setOrderId(delivery?.order_id ?? "");
-    setNote(delivery?.note ?? "");
-    setPaid(!!delivery?.paid_on);
+    setAmount("");
+    setBilledOn("");
+    setCourier("");
+    setOrderId("");
+    setNote("");
+    setPaid(false);
     setKey((k) => k + 1);
-  }, [delivery, open]);
+  }, [open]);
 
   async function submit() {
     const input: DeliveryInput = {
       amount_pkr: Number(amount),
       billed_on: billedOn || today(),
-      // preserve the original paid date when editing; otherwise stamp today if paid
-      paid_on: paid ? (delivery?.paid_on ?? today()) : null,
+      paid_on: paid ? today() : null,
       order_id: orderId || null,
       courier: courier.trim() || null,
       note: note.trim() || null,
     };
     try {
-      await save.mutateAsync({ id: delivery?.id, input });
-      toast.success(delivery ? "Delivery cost updated" : "Delivery cost recorded");
+      await create.mutateAsync(input);
+      toast.success("Delivery cost recorded");
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save delivery cost");
@@ -193,7 +204,7 @@ function DeliveryDialog({ delivery, open, onOpenChange }: { delivery: DeliveryRo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md" key={key}>
         <DialogHeader>
-          <DialogTitle>{delivery ? "Edit delivery cost" : "Record delivery cost"}</DialogTitle>
+          <DialogTitle>Record delivery cost</DialogTitle>
           <DialogDescription>Courier cost to send an order to a customer. Reduces profit; owed until marked paid.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -222,8 +233,8 @@ function DeliveryDialog({ delivery, open, onOpenChange }: { delivery: DeliveryRo
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button className="bg-[#cc0000] text-white hover:bg-[#a30000]" onClick={submit} disabled={save.isPending || !amount}>
-            {save.isPending ? "Saving…" : delivery ? "Save changes" : "Record delivery cost"}
+          <Button className="bg-[#cc0000] text-white hover:bg-[#a30000]" onClick={submit} disabled={create.isPending || !amount}>
+            {create.isPending ? "Saving…" : "Record delivery cost"}
           </Button>
         </DialogFooter>
       </DialogContent>

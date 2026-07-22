@@ -598,6 +598,37 @@ describe("refunds tracker (standalone) — anon/viewer deny, staff write", () =>
     const { error } = await staff.client.from("refunds").insert({ amount_pkr: 500, reason: "   " });
     expect(error).toBeTruthy();
   });
+
+  it("refunds are immutable — staff cannot UPDATE or DELETE (090124)", async () => {
+    const { data: ins } = await staff.client.from("refunds").insert({ amount_pkr: 700, reason: "RLS-refund-immut" }).select("id").single();
+    const id = ins!.id as string;
+    await staff.client.from("refunds").update({ amount_pkr: 999999 }).eq("id", id);
+    await staff.client.from("refunds").delete().eq("id", id);
+    const { data } = await svc.from("refunds").select("amount_pkr").eq("id", id).single();
+    expect(Number(data!.amount_pkr), "amount unchanged").toBe(700);
+    expect(await rowExists("refunds", id), "row survives").toBe(true);
+  });
+
+  it("a mistake is corrected by a signed reversal (staff)", async () => {
+    const { data: ins } = await staff.client.from("refunds").insert({ amount_pkr: 400, reason: "RLS-refund-rev" }).select("id, refunded_on, deduction_cycle").single();
+    const o = ins!;
+    const { error } = await staff.client.from("refunds").insert({ amount_pkr: -400, reason: "Reversal", refunded_on: o.refunded_on, deduction_cycle: o.deduction_cycle, reverses_id: o.id });
+    expect(error).toBeFalsy();
+  });
+
+  it("a reversal with the wrong amount is rejected (guard)", async () => {
+    const { data: ins } = await staff.client.from("refunds").insert({ amount_pkr: 400, reason: "RLS-refund-badrev" }).select("id").single();
+    const { error } = await staff.client.from("refunds").insert({ amount_pkr: -300, reason: "bad", reverses_id: ins!.id });
+    expect(error).toBeTruthy();
+  });
+
+  it("an entry cannot be reversed twice (unique reverses_id)", async () => {
+    const { data: ins } = await staff.client.from("refunds").insert({ amount_pkr: 400, reason: "RLS-refund-dbl" }).select("id").single();
+    const id = ins!.id as string;
+    await staff.client.from("refunds").insert({ amount_pkr: -400, reason: "r1", reverses_id: id });
+    const { error } = await staff.client.from("refunds").insert({ amount_pkr: -400, reason: "r2", reverses_id: id });
+    expect(error).toBeTruthy();
+  });
 });
 
 describe("customer delivery costs — anon/viewer deny, staff write", () => {
@@ -608,6 +639,72 @@ describe("customer delivery costs — anon/viewer deny, staff write", () => {
   it("staff CAN log a delivery cost (owed by default)", async () => {
     const { error } = await staff.client.from("customer_deliveries").insert({ amount_pkr: 300, courier: "RLS-delivery-probe" });
     expect(error).toBeFalsy();
+  });
+
+  it("deliveries are immutable — staff cannot UPDATE or DELETE (090124)", async () => {
+    const { data: ins } = await staff.client.from("customer_deliveries").insert({ amount_pkr: 300, courier: "RLS-del-immut" }).select("id").single();
+    const id = ins!.id as string;
+    await staff.client.from("customer_deliveries").update({ amount_pkr: 999999 }).eq("id", id);
+    await staff.client.from("customer_deliveries").delete().eq("id", id);
+    const { data } = await svc.from("customer_deliveries").select("amount_pkr").eq("id", id).single();
+    expect(Number(data!.amount_pkr), "amount unchanged").toBe(300);
+    expect(await rowExists("customer_deliveries", id), "row survives").toBe(true);
+  });
+
+  it("owed → paid only via mark_delivery_paid (viewer denied; staff one-way)", async () => {
+    const { data: ins } = await staff.client.from("customer_deliveries").insert({ amount_pkr: 300, courier: "RLS-del-paid" }).select("id").single();
+    const id = ins!.id as string;
+    await expectRpcDenied(viewer.client, "mark_delivery_paid", { p_id: id });
+    const { error } = await staff.client.rpc("mark_delivery_paid", { p_id: id });
+    expect(error, "staff can mark it paid").toBeFalsy();
+    const { data } = await svc.from("customer_deliveries").select("paid_on").eq("id", id).single();
+    expect(data!.paid_on, "paid_on stamped").toBeTruthy();
+  });
+
+  it("a delivery mistake is corrected by a signed reversal", async () => {
+    const { data: ins } = await staff.client.from("customer_deliveries").insert({ amount_pkr: 300, courier: "RLS-del-rev" }).select("id, billed_on").single();
+    const o = ins!;
+    const { error } = await staff.client.from("customer_deliveries").insert({ amount_pkr: -300, billed_on: o.billed_on, note: "Reversal", reverses_id: o.id });
+    expect(error).toBeFalsy();
+  });
+});
+
+describe("cash marketing — immutable ledger (create + reverse only, 090124)", () => {
+  it("staff cannot UPDATE or DELETE a cash-marketing row", async () => {
+    const { data: ins } = await staff.client.from("cash_marketing").insert({ kind: "paid_promo", amount_pkr: 250, note: "RLS-cash-immut" }).select("id").single();
+    const id = ins!.id as string;
+    await staff.client.from("cash_marketing").update({ amount_pkr: 999999 }).eq("id", id);
+    await staff.client.from("cash_marketing").delete().eq("id", id);
+    const { data } = await svc.from("cash_marketing").select("amount_pkr").eq("id", id).single();
+    expect(Number(data!.amount_pkr), "amount unchanged").toBe(250);
+    expect(await rowExists("cash_marketing", id), "row survives").toBe(true);
+  });
+  it("a signed reversal nets it out", async () => {
+    const { data: ins } = await staff.client.from("cash_marketing").insert({ kind: "paid_promo", amount_pkr: 250, note: "RLS-cash-rev" }).select("id").single();
+    const { error } = await staff.client.from("cash_marketing").insert({ kind: "paid_promo", amount_pkr: -250, note: "Reversal", reverses_id: ins!.id });
+    expect(error).toBeFalsy();
+  });
+});
+
+describe("PO-line payment guard — payment columns only via record_po_payment (090125)", () => {
+  async function freshLine() {
+    return (await svc.from("purchase_order_lines").insert({ purchase_order_id: poId, product_id: invProductId, qty_ordered: 4, unit_cost_rmb: 100, shipping_per_unit_pkr: 50 }).select("id").single()).data!.id as string;
+  }
+  it("a direct UPDATE of a payment column is rejected", async () => {
+    const line = await freshLine();
+    const { error } = await staff.client.from("purchase_order_lines").update({ item_paid_amount_pkr: 5000, item_paid_on: "2026-01-01" }).eq("id", line);
+    expect(error, "guard rejects a raw payment-column write").toBeTruthy();
+    const { data } = await svc.from("purchase_order_lines").select("item_paid_amount_pkr").eq("id", line).single();
+    expect(data!.item_paid_amount_pkr, "nothing was written").toBeNull();
+  });
+  it("non-payment edits still work; record_po_payment settles legitimately", async () => {
+    const line = await freshLine();
+    const nonPay = await staff.client.from("purchase_order_lines").update({ shipping_per_unit_pkr: 60 }).eq("id", line);
+    expect(nonPay.error, "non-payment edits are unaffected").toBeFalsy();
+    const { error } = await staff.client.rpc("record_po_payment", { p_line_id: line, p_kind: "ship", p_amount: 240, p_use_credit: false, p_occurred_on: "2026-01-01" });
+    expect(error, "record_po_payment can write the payment columns").toBeFalsy();
+    const { data } = await svc.from("purchase_order_lines").select("ship_paid_amount_pkr").eq("id", line).single();
+    expect(Number(data!.ship_paid_amount_pkr), "line settled through the RPC").toBeGreaterThan(0);
   });
 });
 

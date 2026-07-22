@@ -120,12 +120,12 @@ export function useUpdatePrGift() {
 }
 
 // ---- cash marketing (the cash ledger) -------------------------------------
-export interface CashMarketing { id: string; kind: MarketingType; amount_pkr: number; recipient: string | null; note: string | null; spent_on: string }
+export interface CashMarketing { id: string; kind: MarketingType; amount_pkr: number; recipient: string | null; note: string | null; spent_on: string; reverses_id: string | null }
 export function useCashMarketing() {
   return useQuery({
     queryKey: ["cash-marketing"],
     queryFn: async (): Promise<CashMarketing[]> => {
-      const { data, error } = await supabase.from("cash_marketing").select("id, kind, amount_pkr, recipient, note, spent_on").order("spent_on", { ascending: false });
+      const { data, error } = await supabase.from("cash_marketing").select("id, kind, amount_pkr, recipient, note, spent_on, reverses_id").order("spent_on", { ascending: false });
       if (error) throw new Error(friendlyError(error));
       return (data ?? []) as CashMarketing[];
     },
@@ -159,11 +159,16 @@ export function useAddCashMarketing() {
   });
 }
 
-export function useDeleteCashMarketing() {
+// Cash marketing is an immutable ledger (no delete — see migration 090124). Correct a mistake
+// with a signed reversal that nets it out of marketing spend / "What you kept".
+export function useReverseCashMarketing() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("cash_marketing").delete().eq("id", id);
+    mutationFn: async (r: CashMarketing) => {
+      const { error } = await supabase.from("cash_marketing").insert({
+        kind: r.kind, amount_pkr: -r.amount_pkr, recipient: r.recipient,
+        note: `Reversal${r.note ? `: ${r.note}` : ""}`, spent_on: r.spent_on, reverses_id: r.id,
+      });
       if (error) throw new Error(friendlyError(error));
     },
     onSuccess: () => {

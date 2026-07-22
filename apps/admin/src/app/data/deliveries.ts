@@ -15,6 +15,7 @@ export interface DeliveryRow {
   order_id: string | null;
   courier: string | null;
   note: string | null;
+  reverses_id: string | null; // set on a reversal row (negates the original it points at)
   orders: { order_no: string } | null;
 }
 
@@ -24,7 +25,7 @@ export function useDeliveries() {
     queryFn: async (): Promise<DeliveryRow[]> => {
       const { data, error } = await supabase
         .from("customer_deliveries")
-        .select("id, amount_pkr, billed_on, paid_on, order_id, courier, note, orders(order_no)")
+        .select("id, amount_pkr, billed_on, paid_on, order_id, courier, note, reverses_id, orders(order_no)")
         .order("billed_on", { ascending: false });
       if (error) throw new Error(friendlyError(error));
       return (data ?? []) as unknown as DeliveryRow[];
@@ -47,37 +48,46 @@ function invalidate(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["pnl-summary"] }); // delivery reduces "What you kept"
 }
 
-export function useSaveDelivery() {
+// Create-only: deliveries are an immutable ledger (no edit, no delete — see migration 090124).
+export function useCreateDelivery() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, input }: { id?: string; input: DeliveryInput }) => {
+    mutationFn: async (input: DeliveryInput) => {
       const parsed = deliverySchema.parse(input);
-      const res = id
-        ? await supabase.from("customer_deliveries").update(parsed).eq("id", id)
-        : await supabase.from("customer_deliveries").insert(parsed);
-      if (res.error) throw new Error(friendlyError(res.error));
+      const { error } = await supabase.from("customer_deliveries").insert(parsed);
+      if (error) throw new Error(friendlyError(error));
     },
     onSuccess: () => invalidate(qc),
   });
 }
 
-// Toggle owed ⇄ paid (sets or clears paid_on; profit is unaffected — cost is already counted).
-export function useSetDeliveryPaid() {
+// The one legitimate lifecycle transition (owed → paid), through a controlled RPC because raw
+// UPDATE is revoked. One-way: un-paying would be editing history — reverse the row instead.
+export function useMarkDeliveryPaid() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, paid_on }: { id: string; paid_on: string | null }) => {
-      const { error } = await supabase.from("customer_deliveries").update({ paid_on }).eq("id", id);
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("mark_delivery_paid", { p_id: id });
       if (error) throw new Error(friendlyError(error));
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["deliveries"] }),
   });
 }
 
-export function useDeleteDelivery() {
+// Correcting a mistake = a signed reversal row (−original), netted in the ORIGINAL's period.
+export function useReverseDelivery() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("customer_deliveries").delete().eq("id", id);
+    mutationFn: async (r: DeliveryRow) => {
+      const { error } = await supabase.from("customer_deliveries").insert({
+        amount_pkr: -r.amount_pkr,
+        billed_on: r.billed_on,
+        paid_on: null,
+        order_id: r.order_id,
+        courier: r.courier,
+        note: `Reversal of delivery${r.courier ? ` · ${r.courier}` : ""}`,
+        reverses_id: r.id,
+      });
       if (error) throw new Error(friendlyError(error));
     },
     onSuccess: () => invalidate(qc),
