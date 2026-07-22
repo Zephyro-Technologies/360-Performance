@@ -18,7 +18,7 @@ import {
   getStockedParentSlugs,
 } from "../data/api";
 import { formatDate } from "@360/lib/format";
-import { whatsappGeneralUrl, WHATSAPP_DISPLAY } from "@360/lib/whatsapp";
+import { whatsappGeneralUrl } from "@360/lib/whatsapp";
 import { useDocumentMeta } from "../lib/head";
 import { imageUrl } from "@360/supabase";
 import { supabase } from "../data/supabase";
@@ -206,7 +206,7 @@ export function Landing() {
           HERO — full-viewport, centered, parts-collage backdrop
          ──────────────────────────────────────────────────────────────*/}
       {/* Subtracts the navbar AND the announcement bar (published as --announcement-h, 0 when
-          hidden), so the quick-stats row stays at the fold whether or not one is live. */}
+          hidden), so the hero fills exactly one fold whether or not one is live. */}
       <section className="relative isolate flex min-h-[calc(100svh-4rem-var(--announcement-h,0px))] flex-col overflow-hidden bg-black text-white">
         <ImageWithFallback
           src={HERO_IMG}
@@ -246,11 +246,13 @@ export function Landing() {
             Exhausts, turbos, cooling and more — genuine performance parts, hand-picked
             and shipped nationwide.
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <CTA to="/catalogue" size="md" tone="dark">
+          {/* Grid, not flex-wrap: two content-sized buttons came out visibly uneven
+              (one wider than the other). Equal columns make them match. */}
+          <div className="mt-8 grid w-full max-w-md grid-cols-1 gap-3 sm:grid-cols-2">
+            <CTA to="/catalogue" size="md" tone="dark" className="w-full">
               Browse Parts <ArrowRight className="size-4" />
             </CTA>
-            <CTA href={whatsappGeneralUrl()} variant="outline" tone="dark" size="md">
+            <CTA href={whatsappGeneralUrl()} variant="outline" tone="dark" size="md" className="w-full">
               <MessageCircle className="size-4" /> Talk To Us
             </CTA>
           </div>
@@ -259,28 +261,6 @@ export function Landing() {
           <p className="mt-5 font-body text-xs text-white/55">
             No cart, no checkout — order in one message on WhatsApp.
           </p>
-        </div>
-
-        {/* bottom bar — quick stats */}
-        <div className="relative z-10 border-t border-white/10 bg-black/40 backdrop-blur-sm">
-          {/* Three stats in a 2-column grid left the third alone on a second row with an empty
-              cell beside it, doubling the bar's height on the smallest screens. */}
-          <div className="mx-auto grid max-w-7xl grid-cols-3 items-center gap-4 px-4 py-4 sm:px-6 lg:px-8">
-            {[
-              { k: "500+", v: "Builds Supplied" },
-              { k: "100%", v: "Genuine Parts" },
-              { k: "PK", v: "Nationwide Delivery" },
-            ].map((s) => (
-              <div key={s.v} className="flex items-baseline gap-2">
-                <span className="font-heading text-lg font-bold leading-none text-white">
-                  {s.k}
-                </span>
-                <span className="font-heading text-[10px] font-bold uppercase tracking-[0.3em] text-white/50">
-                  {s.v}
-                </span>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -633,17 +613,16 @@ export function Landing() {
             No cart, no account. Send us the part and a real person confirms price, fitment and
             delivery on WhatsApp.
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <CTA href={whatsappGeneralUrl()} variant="primary" tone="dark" size="md">
+          {/* Wider than the hero pair (max-w-md) and nowrap: "Order on WhatsApp" is a long label
+              that wrapped to two lines once the columns were split evenly. */}
+          <div className="mx-auto mt-8 grid w-full max-w-xl grid-cols-1 gap-3 sm:grid-cols-2">
+            <CTA href={whatsappGeneralUrl()} variant="primary" tone="dark" size="md" className="w-full whitespace-nowrap">
               <MessageCircle className="size-4" /> Order on WhatsApp
             </CTA>
-            <CTA to="/catalogue" variant="outline" tone="dark" size="md">
+            <CTA to="/catalogue" variant="outline" tone="dark" size="md" className="w-full whitespace-nowrap">
               Browse Parts
             </CTA>
           </div>
-          <p className="mt-6 font-heading text-sm font-bold tracking-wide text-white/80">
-            {WHATSAPP_DISPLAY}
-          </p>
         </div>
       </section>
     </>

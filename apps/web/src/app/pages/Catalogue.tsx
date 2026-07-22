@@ -248,7 +248,6 @@ export function Catalogue() {
 
       <div className="mt-6">
         <PageHeader
-          eyebrow="Shop"
           title={heading}
           tagline={
             activeCategory
