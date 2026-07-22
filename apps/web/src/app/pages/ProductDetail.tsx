@@ -6,6 +6,7 @@ import { Skeleton } from "@360/ui/skeleton";
 import { ImageWithFallback } from "@360/ui/ImageWithFallback";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { TrustStrip } from "../components/TrustStrip";
+import { CTA } from "../components/CTA";
 import { AvailabilityBadge } from "../components/AvailabilityBadge";
 import { ProductCard } from "../components/ProductCard";
 import { SectionHeading } from "../components/SectionHeading";
@@ -217,16 +218,17 @@ export function ProductDetail() {
                 Sold Out
               </button>
             ) : (
-              <a
+              <CTA
                 href={whatsappOrderUrl({ ...product, url: productUrl(product.slug) })}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={`Order ${product.name} on WhatsApp`}
-                className="flex h-14 items-center justify-center gap-3 rounded-md bg-brand px-8 font-heading text-base font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                ariaLabel={`Order ${product.name} on WhatsApp`}
+                variant="primary"
+                tone="light"
+                size="lg"
+                className="w-full gap-3"
               >
                 <MessageCircle className="size-5" aria-hidden />
                 Order on WhatsApp
-              </a>
+              </CTA>
             )}
             <p className="font-body text-xs text-muted-foreground">
               {product.availability === "made-to-order"

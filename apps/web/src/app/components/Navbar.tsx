@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router";
-import { Menu, MessageCircle, Search as SearchIcon, X } from "lucide-react";
+import { ChevronDown, Menu, MessageCircle, Search as SearchIcon, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -8,8 +8,15 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@360/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@360/ui/dropdown-menu";
 import { Logo } from "./Logo";
 import { SearchBar } from "./SearchBar";
+import { CTA } from "./CTA";
 import { getCategories } from "../data/api";
 import type { Category } from "../data/products";
 import { whatsappGeneralUrl } from "@360/lib/whatsapp";
@@ -122,15 +129,16 @@ export function Navbar() {
 
             {/* Pinned: the primary CTA must never scroll out of reach. */}
             <div className="shrink-0 border-t border-white/10 p-4">
-              <a
+              <CTA
                 href={whatsappGeneralUrl()}
-                target="_blank"
-                rel="noreferrer"
                 onClick={() => setMenuOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-sm bg-brand px-4 py-3 font-heading text-sm font-bold uppercase tracking-wide text-white hover:bg-brand-hover"
+                variant="primary"
+                tone="dark"
+                size="md"
+                className="w-full"
               >
                 <MessageCircle className="size-4" /> Order on WhatsApp
-              </a>
+              </CTA>
             </div>
           </SheetContent>
         </Sheet>
@@ -142,15 +150,38 @@ export function Navbar() {
             in the middle. Centring against the bar itself is independent of how wide the logo
             and the right-hand controls happen to be. */}
         <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 lg:flex">
-          {NAV_LINKS.map((link) => (
+          {/* Shop dropdown — on desktop the categories were only reachable from the mobile sheet;
+              the chrome had no way into a category at all. Hidden gracefully if categories fail to
+              load, falling back to a plain link to the catalogue. */}
+          {categories.length > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger className="group inline-flex items-center gap-1 font-heading text-sm uppercase tracking-[0.2em] text-white/85 outline-none transition-colors hover:text-brand focus-visible:text-brand data-[state=open]:text-brand">
+                Shop
+                <ChevronDown className="size-3.5 transition-transform group-data-[state=open]:rotate-180" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-60">
+                <DropdownMenuItem asChild>
+                  <Link to="/catalogue" className="font-heading text-xs font-bold uppercase tracking-[0.15em]">
+                    All Products
+                  </Link>
+                </DropdownMenuItem>
+                {categories.map((c) => (
+                  <DropdownMenuItem key={c.id} asChild>
+                    <Link to={`/catalogue/${c.slug}`}>{c.name}</Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <NavLink to="/catalogue" className="font-heading text-sm uppercase tracking-[0.2em] text-white/85 transition-colors hover:text-brand">
+              Shop
+            </NavLink>
+          )}
+          {NAV_LINKS.filter((l) => l.to !== "/catalogue").map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
-              className={({ isActive }) =>
-                `font-heading text-sm uppercase tracking-[0.2em] transition-colors hover:text-brand ${
-                  isActive && link.to === "/catalogue" ? "text-brand" : "text-white/85"
-                }`
-              }
+              className="font-heading text-sm uppercase tracking-[0.2em] text-white/85 transition-colors hover:text-brand"
             >
               {link.label}
             </NavLink>

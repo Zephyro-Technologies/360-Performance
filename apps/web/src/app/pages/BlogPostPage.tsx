@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import { ArrowLeft, ArrowUpRight, MessageCircle } from "lucide-react";
 import { ImageWithFallback } from "@360/ui/ImageWithFallback";
 import { Breadcrumbs } from "../components/Breadcrumbs";
+import { CTA } from "../components/CTA";
 import { Skeleton } from "@360/ui/skeleton";
 import { Button } from "@360/ui/button";
 import { Markdown } from "@360/ui/Markdown";
@@ -140,14 +141,9 @@ export function BlogPostPage() {
               Message us — we'll talk you through fitment, lead times and dispatch.
             </p>
           </div>
-          <a
-            href={whatsappBlogUrl(post.title)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center justify-center gap-2 bg-brand px-6 py-3 font-heading text-xs font-bold uppercase tracking-[0.3em] text-white transition-colors hover:bg-brand-hover"
-          >
+          <CTA href={whatsappBlogUrl(post.title)} variant="primary" tone="light" size="sm" className="shrink-0">
             <MessageCircle className="size-4" /> Ask About This Build
-          </a>
+          </CTA>
         </aside>
 
         <div className="mt-10">

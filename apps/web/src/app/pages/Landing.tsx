@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { ArrowRight, ArrowUpRight, MessageCircle, Star } from "lucide-react";
-import { Button } from "@360/ui/button";
 import { Skeleton } from "@360/ui/skeleton";
+import { CTA } from "../components/CTA";
 import { ImageWithFallback } from "@360/ui/ImageWithFallback";
 import { ProductCard } from "../components/ProductCard";
 import { CategoryGrid } from "../components/CategoryGrid";
@@ -247,22 +247,12 @@ export function Landing() {
             and shipped nationwide.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button
-              asChild
-              className="h-12 rounded-sm bg-brand px-8 font-heading text-sm font-bold uppercase tracking-[0.2em] text-white hover:bg-brand-hover"
-            >
-              <Link to="/catalogue">
-                Browse Parts <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <a
-              href={whatsappGeneralUrl()}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-12 items-center gap-2 rounded-sm border border-white/30 bg-transparent px-8 font-heading text-sm font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-white hover:text-black"
-            >
+            <CTA to="/catalogue" size="md" tone="dark">
+              Browse Parts <ArrowRight className="size-4" />
+            </CTA>
+            <CTA href={whatsappGeneralUrl()} variant="outline" tone="dark" size="md">
               <MessageCircle className="size-4" /> Talk To Us
-            </a>
+            </CTA>
           </div>
           {/* Set the (cartless) ordering model in the first viewport — "Shop" implies a checkout
               this store doesn't have, which is a common source of bounce. */}
@@ -433,13 +423,10 @@ export function Landing() {
           )}
 
           <div className="mt-10 flex justify-center">
-            <Link
-              to={`/catalogue/${activeTab}`}
-              className="inline-flex items-center gap-2 border border-black px-7 py-3 font-heading text-xs font-bold uppercase tracking-[0.25em] text-black transition-colors hover:bg-black hover:text-white"
-            >
+            <CTA to={`/catalogue/${activeTab}`} variant="outline" tone="light" size="md">
               View {visibleTabs.find((t) => t.id === activeTab)?.label}
               <ArrowUpRight className="size-4" />
-            </Link>
+            </CTA>
           </div>
         </div>
       </section>
@@ -507,12 +494,9 @@ export function Landing() {
             align="center"
           />
           <div className="mt-2 flex justify-center">
-            <Link
-              to="/blog"
-              className="border border-zinc-300 px-5 py-2 font-heading text-[11px] font-bold uppercase tracking-[0.3em] text-zinc-700 transition-colors hover:border-black hover:text-black"
-            >
+            <CTA to="/blog" variant="outline" tone="light" size="sm">
               View All
-            </Link>
+            </CTA>
           </div>
           <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {posts
@@ -650,20 +634,12 @@ export function Landing() {
             delivery on WhatsApp.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <a
-              href={whatsappGeneralUrl()}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-12 items-center gap-2 rounded-sm bg-brand px-8 font-heading text-sm font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
+            <CTA href={whatsappGeneralUrl()} variant="primary" tone="dark" size="md">
               <MessageCircle className="size-4" /> Order on WhatsApp
-            </a>
-            <Link
-              to="/catalogue"
-              className="inline-flex h-12 items-center gap-2 rounded-sm border border-white/30 px-8 font-heading text-sm font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-white hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
+            </CTA>
+            <CTA to="/catalogue" variant="outline" tone="dark" size="md">
               Browse Parts
-            </Link>
+            </CTA>
           </div>
           <p className="mt-6 font-heading text-sm font-bold tracking-wide text-white/80">
             {WHATSAPP_DISPLAY}

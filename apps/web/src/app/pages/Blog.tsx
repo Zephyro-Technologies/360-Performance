@@ -4,6 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 import { ImageWithFallback } from "@360/ui/ImageWithFallback";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { PageHeader } from "../components/PageHeader";
+import { CTA } from "../components/CTA";
 import { Skeleton } from "@360/ui/skeleton";
 import { getBlogPosts } from "../data/api";
 import { type BlogPost } from "../data/content";
@@ -64,20 +65,12 @@ export function Blog() {
               and we'll spec your build in the chat.
             </p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-              <Link
-                to="/catalogue"
-                className="inline-flex items-center gap-2 bg-brand px-6 py-3 font-heading text-xs font-bold uppercase tracking-[0.25em] text-white transition-colors hover:bg-brand-hover"
-              >
+              <CTA to="/catalogue" variant="primary" tone="light" size="sm">
                 Browse Parts
-              </Link>
-              <a
-                href={whatsappGeneralUrl()}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 border border-black px-6 py-3 font-heading text-xs font-bold uppercase tracking-[0.25em] text-black transition-colors hover:bg-black hover:text-white"
-              >
+              </CTA>
+              <CTA href={whatsappGeneralUrl()} variant="outline" tone="light" size="sm">
                 Talk To Us
-              </a>
+              </CTA>
             </div>
           </div>
         ) : (
