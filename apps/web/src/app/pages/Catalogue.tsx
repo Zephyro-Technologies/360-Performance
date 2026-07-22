@@ -223,16 +223,6 @@ export function Catalogue() {
           </label>
         </div>
       </div>
-
-      {hasActiveFilters && (
-        <button
-          type="button"
-          onClick={resetAll}
-          className="self-start font-heading text-xs font-bold uppercase tracking-[0.25em] text-brand transition-colors hover:underline"
-        >
-          Reset filters
-        </button>
-      )}
     </div>
   );
 

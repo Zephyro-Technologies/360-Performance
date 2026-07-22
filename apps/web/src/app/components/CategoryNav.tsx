@@ -6,9 +6,9 @@
 //
 // Selection styling is deliberately uniform: every ACTUAL filter (All Products, a leaf,
 // a standalone, or a parent you've landed on via the mega-menu) gets the same solid brand
-// pill. A parent that is EXPANDED (or whose child is selected) gets a lighter red-text
-// treatment — a weaker state that marks the open/active section without claiming to be the
-// selected filter itself.
+// pill. An EXPANDED parent gets a lighter red-text treatment — a weaker state that marks the
+// open section without claiming to be the selected filter itself. A COLLAPSED parent stays
+// neutral even when one of its (hidden) children is the active filter.
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
@@ -68,7 +68,6 @@ export function CategoryNav({
         {groups.map((g) => {
           const isOpen = expanded.has(g.parent.id);
           const parentSelf = category === g.parent.slug;
-          const childActive = g.leaves.some((l) => l.slug === category);
 
           // Standalone top-level category (no children) — a direct filter, not an accordion.
           if (g.leaves.length === 0) {
@@ -95,14 +94,14 @@ export function CategoryNav({
                 aria-expanded={isOpen}
                 aria-current={parentSelf ? "true" : undefined}
                 className={`${BASE} flex items-center justify-between gap-2 px-3 py-2 text-sm font-semibold uppercase tracking-wide ${
-                  parentSelf ? ACTIVE : isOpen || childActive ? "text-brand hover:bg-accent" : IDLE
+                  parentSelf ? ACTIVE : isOpen ? "text-brand hover:bg-accent" : IDLE
                 }`}
               >
                 <span className="truncate">{g.parent.name}</span>
                 <ChevronDown
                   className={`size-4 shrink-0 transition-transform motion-reduce:transition-none ${
                     isOpen ? "rotate-180" : ""
-                  } ${parentSelf ? "text-white/90" : isOpen || childActive ? "text-brand" : "text-zinc-400"}`}
+                  } ${parentSelf ? "text-white/90" : isOpen ? "text-brand" : "text-zinc-400"}`}
                 />
               </button>
               {isOpen && (

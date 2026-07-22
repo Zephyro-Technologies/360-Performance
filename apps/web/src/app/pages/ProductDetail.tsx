@@ -239,7 +239,7 @@ export function ProductDetail() {
             </p>
           </div>
 
-          {/* Reassurance — shared TrustStrip so delivery/returns/payment read the same everywhere
+          {/* Reassurance — shared TrustStrip so delivery/genuine/payment read the same everywhere
               and link to the policy that backs them. */}
           <TrustStrip cols={2} className="mt-8" />
 

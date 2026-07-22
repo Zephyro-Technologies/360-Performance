@@ -1,27 +1,26 @@
-import { Truck, ShieldCheck, RotateCcw, Wallet } from "lucide-react";
+import { Truck, ShieldCheck, Wallet } from "lucide-react";
 import { Link } from "react-router";
 import { PAYMENT_METHODS } from "../data/content";
 
 // The buying reassurances a WhatsApp customer weighs before messaging — including HOW to pay,
-// which the site never stated. Delivery and returns link to the policy that backs them up.
+// which the site never stated. Delivery links to the policy that backs it up.
 const ITEMS = [
   { icon: Truck, title: "Nationwide delivery", sub: "Shipped across Pakistan", to: "/policies/shipping" },
   { icon: ShieldCheck, title: "Genuine parts", sub: "Hand-picked, no fakes", to: undefined },
-  { icon: RotateCcw, title: "7-day returns", sub: "If it's not right", to: "/policies/returns" },
   { icon: Wallet, title: "Flexible payment", sub: PAYMENT_METHODS.join(" · "), to: undefined },
 ];
 
 export function TrustStrip({
   tone = "light",
-  cols = 4,
+  cols = 3,
   className = "",
 }: {
   tone?: "light" | "dark";
-  cols?: 2 | 4;
+  cols?: 2 | 3;
   className?: string;
 }) {
   const dark = tone === "dark";
-  const grid = cols === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4";
+  const grid = cols === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-3";
   const box = dark ? "border-white/10 bg-white/5 hover:border-brand/40" : "border-border bg-muted/40 hover:border-black/30";
   return (
     <ul className={`grid gap-3 ${grid} ${className}`}>

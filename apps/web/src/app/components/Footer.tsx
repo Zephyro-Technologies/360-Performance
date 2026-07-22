@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Instagram, Facebook, Youtube, MessageCircle } from "lucide-react";
 import { Logo } from "./Logo";
 import { whatsappGeneralUrl, WHATSAPP_DISPLAY } from "@360/lib/whatsapp";
-import { SOCIAL_LINKS, PAYMENT_METHODS } from "../data/content";
+import { SOCIAL_LINKS } from "../data/content";
 
 // lucide-react has no TikTok glyph, so it's inlined.
 function TikTok({ className }: { className?: string }) {
@@ -98,10 +98,6 @@ export function Footer() {
             <MessageCircle className="size-4 text-brand" /> {WHATSAPP_DISPLAY}
           </a>
           <p className="mt-2 font-body text-sm text-white/60">Islamabad, Pakistan</p>
-          <p className="mt-6 font-heading text-[11px] font-bold uppercase tracking-[0.25em] text-white/40">
-            We Accept
-          </p>
-          <p className="mt-2 font-body text-sm text-white/70">{PAYMENT_METHODS.join(" · ")}</p>
         </div>
       </div>
 
