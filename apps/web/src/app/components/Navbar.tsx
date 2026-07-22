@@ -108,7 +108,7 @@ export function Navbar() {
                   {categories.map((c) => (
                     <Link
                       key={c.id}
-                      to={`/catalogue?category=${c.slug}`}
+                      to={`/catalogue/${c.slug}`}
                       onClick={() => setMenuOpen(false)}
                       className="rounded-md px-2 py-2 font-body text-sm text-white/80 transition-colors hover:text-brand"
                     >

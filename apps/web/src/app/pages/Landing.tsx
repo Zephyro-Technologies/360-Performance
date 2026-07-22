@@ -435,7 +435,7 @@ export function Landing() {
 
           <div className="mt-10 flex justify-center">
             <Link
-              to={`/catalogue?category=${activeTab}`}
+              to={`/catalogue/${activeTab}`}
               className="inline-flex items-center gap-2 border border-black px-7 py-3 font-heading text-xs font-bold uppercase tracking-[0.25em] text-black transition-colors hover:bg-black hover:text-white"
             >
               View {visibleTabs.find((t) => t.id === activeTab)?.label}

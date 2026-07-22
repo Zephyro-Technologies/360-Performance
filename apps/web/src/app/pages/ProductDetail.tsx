@@ -129,7 +129,7 @@ export function ProductDetail() {
           { label: "Home", to: "/" },
           { label: "Catalogue", to: "/catalogue" },
           ...(product.categoryName
-            ? [{ label: product.categoryName, to: `/catalogue?category=${product.category}` }]
+            ? [{ label: product.categoryName, to: `/catalogue/${product.category}` }]
             : []),
           { label: product.name },
         ]}

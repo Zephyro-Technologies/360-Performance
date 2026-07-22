@@ -22,7 +22,7 @@ function Tile({ category }: { category: Category }) {
   const meta = PARENT_META[category.slug];
   return (
     <Link
-      to={`/catalogue?category=${category.slug}`}
+      to={`/catalogue/${category.slug}`}
       className="group relative isolate flex h-72 flex-col justify-end overflow-hidden bg-zinc-950 ring-1 ring-white/5 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_30px_60px_-20px_rgba(204,0,0,0.55)] hover:ring-brand/40 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
     >
       <ImageWithFallback

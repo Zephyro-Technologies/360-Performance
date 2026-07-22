@@ -143,10 +143,17 @@ async function emit(route, html) {
 const shell = await readFile(path.join(DIST, "index.html"), "utf8");
 
 // ---- products -----------------------------------------------------------------------------
-const products = await q(
-  "products_public",
-  "select=slug,name,brand,sku,mpn,price_pkr,sale_price_pkr,images,short_description,meta_description,availability,created_at",
-);
+// updated_at (migration 090122) gives the sitemap an accurate <lastmod>. Requested optimistically
+// and dropped if the column isn't exposed yet, so this build works whether or not the migration
+// has been pushed — no deploy-ordering coupling.
+const PRODUCT_COLS = "slug,name,brand,sku,mpn,price_pkr,sale_price_pkr,images,short_description,meta_description,availability,created_at";
+let products;
+try {
+  products = await q("products_public", `select=${PRODUCT_COLS},updated_at`);
+} catch {
+  console.warn("[prerender] products_public.updated_at not exposed yet (migration 090122) — sitemap lastmod falls back to created_at");
+  products = await q("products_public", `select=${PRODUCT_COLS}`);
+}
 
 // Keyed on the RAW DB enum (products_public.availability), unlike lib/jsonld.ts which maps the
 // hyphenated view-model values. `made_to_order` is the column DEFAULT, so omitting it here made
@@ -291,22 +298,34 @@ for (const b of posts) {
   );
 }
 
-// ---- categories (for the sitemap only) ----------------------------------------------------
-// Top-level category slugs are indexable per lib/head.ts (?category= is a canonical param), and
-// they are the URLs sellers paste into chats. They are query-string variants of /catalogue, not
-// their own prerendered files (that would need a path-based route), but they belong in the sitemap.
-const categories = await q("categories", "select=slug,parent_id");
-const parentCategorySlugs = categories.filter((c) => c.parent_id === null).map((c) => c.slug);
+// ---- categories -----------------------------------------------------------------------------
+// A prerendered page per category (/catalogue/<slug>) so a shared category link — exactly what a
+// seller pastes into a chat — previews with that category's own title + description instead of the
+// generic catalogue. Titles/descriptions match the runtime Catalogue page for a category.
+const categories = await q("categories", "select=slug,name,parent_id");
+for (const c of categories) {
+  await emit(
+    `catalogue/${c.slug}`,
+    render(shell, {
+      title: `${c.name} | ${BRAND}`,
+      description: `Browse ${c.name} parts at ${BRAND} — genuine, hand-picked, shipped across Pakistan. Order on WhatsApp.`,
+      url: `${SITE}/catalogue/${c.slug}`,
+    }),
+  );
+}
+const parentCats = categories.filter((c) => c.parent_id === null);
+const leafCats = categories.filter((c) => c.parent_id !== null);
 
 // ---- sitemap + robots ---------------------------------------------------------------------
 const urls = [
   { loc: `${SITE}/`, priority: "1.0" },
   // A hub page outranks the individual products beneath it.
   { loc: `${SITE}/catalogue`, priority: "0.9" },
-  ...parentCategorySlugs.map((slug) => ({ loc: `${SITE}/catalogue?category=${slug}`, priority: "0.8" })),
+  ...parentCats.map((c) => ({ loc: `${SITE}/catalogue/${c.slug}`, priority: "0.8" })),
+  ...leafCats.map((c) => ({ loc: `${SITE}/catalogue/${c.slug}`, priority: "0.6" })),
   { loc: `${SITE}/blog`, priority: "0.7" },
   ...["returns", "shipping", "privacy"].map((p) => ({ loc: `${SITE}/policies/${p}`, priority: "0.5" })),
-  ...products.map((p) => ({ loc: `${SITE}/product/${p.slug}`, priority: "0.9", lastmod: p.created_at?.slice(0, 10) })),
+  ...products.map((p) => ({ loc: `${SITE}/product/${p.slug}`, priority: "0.9", lastmod: (p.updated_at ?? p.created_at)?.slice(0, 10) })),
   ...posts.map((b) => ({ loc: `${SITE}/blog/${b.slug}`, priority: "0.6", lastmod: b.published_at?.slice(0, 10) })),
 ];
 
@@ -333,5 +352,5 @@ await writeFile(
 
 console.log(
   `[prerender] ${products.length} products, ${posts.length} blog posts, ${STATIC_PAGES.length} static pages, ` +
-    `${parentCategorySlugs.length} categories in sitemap (${urls.length} urls) + robots.txt + 404.html`,
+    `${categories.length} category pages, sitemap (${urls.length} urls) + robots.txt + 404.html`,
 );

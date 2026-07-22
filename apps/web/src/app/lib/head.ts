@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useLocation } from "react-router";
 import { siteOrigin } from "./site";
 
 const BASE = "360 Performance";
@@ -30,20 +31,14 @@ function upsertLink(rel: string, href: string) {
   el.href = href;
 }
 
-function buildCanonical(params: Iterable<[string, string]>): string {
+function buildCanonical(pathname: string, params: Iterable<[string, string]>): string {
   const keep = new URLSearchParams();
   for (const [p, v] of params) {
     // ?page=1 is the same page as no ?page at all — don't canonicalise a duplicate.
     if (v && !(p === "page" && v === "1")) keep.set(p, v);
   }
   const qs = keep.toString();
-  return `${siteOrigin()}${window.location.pathname}${qs ? `?${qs}` : ""}`;
-}
-
-/** Canonical for the current route: path + only the params that make it a distinct page. */
-function canonicalUrl(): string {
-  const src = new URLSearchParams(window.location.search);
-  return buildCanonical(CANONICAL_PARAMS.map((p) => [p, src.get(p) ?? ""] as [string, string]));
+  return `${siteOrigin()}${pathname}${qs ? `?${qs}` : ""}`;
 }
 
 export type MetaOptions = {
@@ -77,6 +72,9 @@ export function useDocumentMeta(
 ) {
   const robots = opts?.robots ?? "index, follow";
   const imageAlt = opts?.imageAlt;
+  // Reactive path/search so the canonical recomputes on a route change even when the title and
+  // description stay the same (e.g. a redirect between two "Shop All Parts" URLs).
+  const { pathname, search } = useLocation();
   // Stable dep for the params object (recreated each render otherwise).
   const paramsKey = opts?.canonicalParams ? JSON.stringify(opts.canonicalParams) : "";
   useEffect(() => {
@@ -84,11 +82,15 @@ export function useDocumentMeta(
     const desc = description || HOME_DESC;
     const url = opts?.canonicalParams
       ? buildCanonical(
+          pathname,
           Object.entries(opts.canonicalParams)
             .filter(([, v]) => v != null && v !== "")
             .map(([k, v]) => [k, String(v)] as [string, string]),
         )
-      : canonicalUrl();
+      : buildCanonical(
+          pathname,
+          CANONICAL_PARAMS.map((p) => [p, new URLSearchParams(search).get(p) ?? ""] as [string, string]),
+        );
     const ogImage = image || `${siteOrigin()}/og-card.png`;
     const alt = imageAlt || (image ? title || BASE : `${BASE} — genuine motorsports parts`);
 
@@ -113,5 +115,5 @@ export function useDocumentMeta(
 
     upsertLink("canonical", url);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, description, image, robots, imageAlt, paramsKey]);
+  }, [title, description, image, robots, imageAlt, paramsKey, pathname, search]);
 }

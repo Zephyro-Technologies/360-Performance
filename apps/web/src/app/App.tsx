@@ -17,6 +17,8 @@ const router = createBrowserRouter([
         children: [
           { index: true, Component: Landing },
           { path: "catalogue", lazy: async () => ({ Component: (await import("./pages/Catalogue")).Catalogue }) },
+          // Path-based category so each has its own prerendered page + share preview. Same component.
+          { path: "catalogue/:category", lazy: async () => ({ Component: (await import("./pages/Catalogue")).Catalogue }) },
           { path: "product/:id", lazy: async () => ({ Component: (await import("./pages/ProductDetail")).ProductDetail }) },
           { path: "blog", lazy: async () => ({ Component: (await import("./pages/Blog")).Blog }) },
           { path: "blog/:slug", lazy: async () => ({ Component: (await import("./pages/BlogPostPage")).BlogPostPage }) },

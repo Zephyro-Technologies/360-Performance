@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { SlidersHorizontal, X, ChevronLeft, ChevronRight, PackageX } from "lucide-react";
 import {
   Select,
@@ -43,6 +43,10 @@ const SORT_LABELS: Record<SortOption, string> = {
 
 export function Catalogue() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  // Category lives in the PATH now (/catalogue/:category) so it gets its own prerendered page and
+  // a category-specific share preview. Legacy ?category= links still resolve (redirected below).
+  const { category: pathCategory } = useParams<{ category?: string }>();
   const [categories, setCategories] = useState<Category[]>([]);
   // Swallowing this failure collapsed the sidebar to a lone "All Products" button and stripped
   // the empty state's category shortcuts, with nothing to say anything had gone wrong.
@@ -75,14 +79,41 @@ export function Catalogue() {
 
   // Validate + clamp URL params against known values (no unchecked casts).
   const validSlugs = useMemo(() => new Set(categories.map((c) => c.slug)), [categories]);
-  const rawCategory = searchParams.get("category");
+  const rawCategory = pathCategory ?? searchParams.get("category");
   // Before categories load, trust a present slug (avoids a throwaway "all" fetch +
   // heading flash on deep-links); once loaded, coerce unknown slugs to "all".
   const category = rawCategory ? (categories.length === 0 || validSlugs.has(rawCategory) ? rawCategory : "all") : "all";
+
+  // Keep one canonical URL shape for a category. A legacy ?category=x link becomes /catalogue/x
+  // (carrying any q/sort/page), and a path category that doesn't exist (typo, retired slug) falls
+  // back to all-products so it can't self-canonicalise a dead URL.
+  useEffect(() => {
+    const legacy = searchParams.get("category");
+    if (!pathCategory && legacy) {
+      const qs = new URLSearchParams(searchParams);
+      qs.delete("category");
+      const query = qs.toString();
+      navigate(`/catalogue/${legacy}${query ? `?${query}` : ""}`, { replace: true });
+      return;
+    }
+    if (pathCategory && categories.length > 0 && !validSlugs.has(pathCategory)) {
+      navigate("/catalogue", { replace: true });
+    }
+  }, [pathCategory, searchParams, categories.length, validSlugs, navigate]);
+
   const search = searchParams.get("q") ?? "";
   const rawSort = searchParams.get("sort");
   const sort: SortOption = rawSort && rawSort in SORT_LABELS ? (rawSort as SortOption) : "newest";
   const page = Math.max(1, Math.floor(Number(searchParams.get("page") ?? "1")) || 1);
+
+  // Selecting a category navigates to its path, keeping the current search/sort and resetting page.
+  const selectCategory = (slug: string | null) => {
+    const qs = new URLSearchParams();
+    if (search) qs.set("q", search);
+    if (sort !== "newest") qs.set("sort", sort);
+    const query = qs.toString();
+    navigate(`${slug ? `/catalogue/${slug}` : "/catalogue"}${query ? `?${query}` : ""}`);
+  };
 
   const metaCategory = category !== "all" ? categories.find((c) => c.slug === category) : undefined;
 
@@ -98,10 +129,9 @@ export function Catalogue() {
       : "Browse the full 360 Performance catalogue — genuine performance parts for exhausts, cooling, fuelling, suspension and more, shipped across Pakistan.",
     undefined,
     {
-      // Canonicalise only what the page actually rendered: a coerced-away bogus category or an
-      // out-of-range page must not self-canonicalise. `result.page` is the page truly served.
+      // The category is in the pathname now, so the canonical only needs the page. An out-of-range
+      // page must not self-canonicalise — `result.page` is the page actually served.
       canonicalParams: {
-        category: metaCategory?.slug ?? null,
         page: result && result.page > 1 ? result.page : null,
       },
     },
@@ -155,7 +185,8 @@ export function Catalogue() {
 
   const resetAll = () => {
     setInStockOnly(false);
-    setSearchParams(new URLSearchParams());
+    // Clears the category (path) and all query filters.
+    navigate("/catalogue");
   };
 
   const hasActiveFilters =
@@ -168,7 +199,7 @@ export function Catalogue() {
           Couldn't load categories — refresh to filter by category.
         </p>
       )}
-      <CategoryNav groups={parentGroups} category={category} onSelect={(slug) => update({ category: slug })} />
+      <CategoryNav groups={parentGroups} category={category} onSelect={selectCategory} />
 
       <div>
         <h4 className="mb-2 font-heading text-xs font-bold uppercase tracking-[0.2em] text-zinc-500">Availability</h4>
@@ -293,7 +324,7 @@ export function Catalogue() {
               {activeCategory && (
                 <FilterChip
                   label={`Category: ${activeCategory.name}`}
-                  onRemove={() => update({ category: null })}
+                  onRemove={() => selectCategory(null)}
                 />
               )}
               {search && (
@@ -412,9 +443,7 @@ export function Catalogue() {
                     type="button"
                     onClick={() => {
                       setInStockOnly(false);
-                      const next = new URLSearchParams();
-                      next.set("category", g.parent.slug);
-                      setSearchParams(next);
+                      navigate(`/catalogue/${g.parent.slug}`);
                     }}
                     className="border border-zinc-300 px-4 py-2 font-heading text-xs font-bold uppercase tracking-[0.25em] text-zinc-700 transition-colors hover:border-black hover:bg-black hover:text-white"
                   >
