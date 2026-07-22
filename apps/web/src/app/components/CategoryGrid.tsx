@@ -6,17 +6,23 @@ import { getCategories } from "../data/api";
 import type { Category } from "../data/products";
 
 // The DB categories carry no art — map the fixed parent slugs to showcase imagery.
+//
+// Images are self-hosted static files in apps/web/public/categories/, one per parent slug, named
+// <slug>.webp (e.g. exhaust-induction.webp) — compressed from the source art (~40-60KB each). To
+// change a card, drop a replacement in that folder; in dev it updates on refresh, no rebuild. Use
+// a landscape image; the lower third sits under a solid-black gradient for the title, so keep the
+// subject in the upper two-thirds.
 const PARENT_META: Record<string, { image: string; tagline: string }> = {
-  "exhaust-induction": { image: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=800&q=80", tagline: "Downpipes, exhausts & intakes" },
-  "cooling-systems": { image: "https://images.unsplash.com/photo-1518987048-93e29699e79a?auto=format&fit=crop&w=800&q=80", tagline: "Radiators & intercoolers" },
-  "fuel-plumbing": { image: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80", tagline: "Fueling, AN pipe & fittings" },
-  "braking-suspension": { image: "https://images.unsplash.com/photo-1600661653561-629509216228?auto=format&fit=crop&w=800&q=80", tagline: "Brake pads & suspension" },
-  "electronics-lighting": { image: "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&w=800&q=80", tagline: "Gauges, lighting & ignition" },
-  interior: { image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80", tagline: "Seats & carbon trim" },
-  exterior: { image: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=800&q=80", tagline: "Body kits & exterior" },
-  "misc-performance": { image: "https://images.unsplash.com/photo-1530046339160-ce3e530c7d2f?auto=format&fit=crop&w=800&q=80", tagline: "Performance extras" },
+  "exhaust-induction": { image: "/categories/exhaust-induction.webp", tagline: "Downpipes, exhausts & intakes" },
+  "cooling-systems": { image: "/categories/cooling-systems.webp", tagline: "Radiators & intercoolers" },
+  "fuel-plumbing": { image: "/categories/fuel-plumbing.webp", tagline: "Fueling, AN pipe & fittings" },
+  "braking-suspension": { image: "/categories/braking-suspension.webp", tagline: "Brake pads & suspension" },
+  "electronics-lighting": { image: "/categories/electronics-lighting.webp", tagline: "Gauges, lighting & ignition" },
+  interior: { image: "/categories/interior.webp", tagline: "Seats & carbon trim" },
+  exterior: { image: "/categories/exterior.webp", tagline: "Body kits & exterior" },
+  "misc-performance": { image: "/categories/misc-performance.webp", tagline: "Performance extras" },
 };
-const FALLBACK_IMG = "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=800&q=80";
+const FALLBACK_IMG = "/og-card.png";
 
 function Tile({ category }: { category: Category }) {
   const meta = PARENT_META[category.slug];

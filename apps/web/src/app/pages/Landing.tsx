@@ -23,8 +23,9 @@ import { useDocumentMeta } from "../lib/head";
 import { imageUrl } from "@360/supabase";
 import { supabase } from "../data/supabase";
 
-const HERO_IMG =
-  "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=1920&q=80";
+// Self-hosted (apps/web/public/hero.webp), compressed from source art. Replace that file to
+// change the hero backdrop. It's the LCP image, so it stays eager (no lazy loading).
+const HERO_IMG = "/hero.webp";
 
 const COLLECTION_TABS: { id: CategoryId; label: string }[] = [
   { id: "exhaust-induction", label: "Exhaust & Induction" },
