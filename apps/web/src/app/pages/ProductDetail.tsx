@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router";
-import { MessageCircle, Truck, ShieldCheck, RotateCcw } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { Button } from "@360/ui/button";
 import { Skeleton } from "@360/ui/skeleton";
 import { ImageWithFallback } from "@360/ui/ImageWithFallback";
 import { Breadcrumbs } from "../components/Breadcrumbs";
+import { TrustStrip } from "../components/TrustStrip";
 import { AvailabilityBadge } from "../components/AvailabilityBadge";
 import { ProductCard } from "../components/ProductCard";
 import { SectionHeading } from "../components/SectionHeading";
@@ -232,19 +233,9 @@ export function ProductDetail() {
             </p>
           </div>
 
-          {/* Reassurance */}
-          <div className="mt-8 grid grid-cols-1 gap-3 rounded-lg border border-border bg-muted/40 p-4 sm:grid-cols-3">
-            {[
-              { icon: Truck, text: "Nationwide delivery" },
-              { icon: ShieldCheck, text: "Genuine part" },
-              { icon: RotateCcw, text: "Backed by our return policy" },
-            ].map((f) => (
-              <div key={f.text} className="flex items-center gap-2">
-                <f.icon className="size-5 text-brand" />
-                <span className="font-body text-sm text-foreground">{f.text}</span>
-              </div>
-            ))}
-          </div>
+          {/* Reassurance — shared TrustStrip so delivery/returns/payment read the same everywhere
+              and link to the policy that backs them. */}
+          <TrustStrip cols={2} className="mt-8" />
 
           {/* Specs — hidden when empty; the heading over a 2px hairline box read as broken. */}
           {product.specs.length > 0 && (

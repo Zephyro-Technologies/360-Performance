@@ -1,7 +1,24 @@
 import { Link } from "react-router";
-import { Instagram, Facebook, MessageCircle } from "lucide-react";
+import { Instagram, Facebook, Youtube, MessageCircle } from "lucide-react";
 import { Logo } from "./Logo";
 import { whatsappGeneralUrl, WHATSAPP_DISPLAY } from "@360/lib/whatsapp";
+import { SOCIAL_LINKS } from "../data/content";
+
+// lucide-react has no TikTok glyph, so it's inlined.
+function TikTok({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+      <path d="M16.5 3c.3 2 1.6 3.6 3.5 3.9v2.8c-1.3.1-2.6-.3-3.6-1v6.1a5.9 5.9 0 1 1-5.9-5.9c.3 0 .5 0 .8.1v2.9a3 3 0 1 0 2.1 2.9V3h3.1Z" />
+    </svg>
+  );
+}
+
+const SOCIALS = [
+  { label: "Instagram", href: SOCIAL_LINKS.instagram, Icon: Instagram },
+  { label: "Facebook", href: SOCIAL_LINKS.facebook, Icon: Facebook },
+  { label: "TikTok", href: SOCIAL_LINKS.tiktok, Icon: TikTok },
+  { label: "YouTube", href: SOCIAL_LINKS.youtube, Icon: Youtube },
+];
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -56,28 +73,20 @@ export function Footer() {
           >
             <MessageCircle className="size-4 text-brand" /> Talk to us · {WHATSAPP_DISPLAY}
           </a>
-          <p className="mt-1 font-body text-sm text-white/60">
-            Islamabad, Pakistan — showroom coming soon
-          </p>
-          <div className="mt-5 flex gap-2">
-            <a
-              href="https://instagram.com"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Instagram"
-              className="inline-flex size-11 items-center justify-center rounded-full border border-white/20 transition-colors hover:border-brand hover:bg-brand"
-            >
-              <Instagram className="size-4" />
-            </a>
-            <a
-              href="https://facebook.com"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Facebook"
-              className="inline-flex size-11 items-center justify-center rounded-full border border-white/20 transition-colors hover:border-brand hover:bg-brand"
-            >
-              <Facebook className="size-4" />
-            </a>
+          <p className="mt-1 font-body text-sm text-white/60">Islamabad, Pakistan</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {SOCIALS.map(({ label, href, Icon }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={label}
+                className="inline-flex size-11 items-center justify-center rounded-full border border-white/20 transition-colors hover:border-brand hover:bg-brand"
+              >
+                <Icon className="size-4" />
+              </a>
+            ))}
           </div>
         </div>
       </div>

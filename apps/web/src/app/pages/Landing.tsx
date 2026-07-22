@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { ArrowRight, ArrowUpRight, MessageCircle } from "lucide-react";
+import { ArrowRight, ArrowUpRight, MessageCircle, Star } from "lucide-react";
 import { Button } from "@360/ui/button";
 import { Skeleton } from "@360/ui/skeleton";
 import { ImageWithFallback } from "@360/ui/ImageWithFallback";
 import { ProductCard } from "../components/ProductCard";
 import { CategoryGrid } from "../components/CategoryGrid";
 import { Marquee } from "../components/Marquee";
+import { TrustStrip } from "../components/TrustStrip";
 import { type Product, type CategoryId } from "../data/products";
 import { OUR_STORY, type Testimonial, type BlogPost } from "../data/content";
 import {
@@ -24,13 +25,6 @@ import { supabase } from "../data/supabase";
 
 const HERO_IMG =
   "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=1920&q=80";
-
-const REEL_PORTRAITS = [
-  "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=600&q=80",
-];
 
 const COLLECTION_TABS: { id: CategoryId; label: string }[] = [
   { id: "exhaust-induction", label: "Exhaust & Induction" },
@@ -104,6 +98,17 @@ function SectionTitle({
           {tagline}
         </p>
       )}
+    </div>
+  );
+}
+
+function Stars({ rating }: { rating: number }) {
+  const n = Math.max(0, Math.min(5, Math.round(rating)));
+  return (
+    <div className="flex gap-0.5" role="img" aria-label={`${n} out of 5 stars`}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star key={i} className={`size-3.5 ${i < n ? "fill-brand text-brand" : "text-white/20"}`} aria-hidden />
+      ))}
     </div>
   );
 }
@@ -285,22 +290,11 @@ export function Landing() {
       </section>
 
       {/* ──────────────────────────────────────────────────────────────
-          BRAND INTRO — short centered narrative on white
+          TRUST STRIP — the buying reassurances (incl. payment) right at the fold
          ──────────────────────────────────────────────────────────────*/}
       <section className="bg-white">
-        <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 lg:px-8 lg:py-20">
-          <h2
-            className="font-heading font-bold uppercase leading-none tracking-tight text-black"
-            style={{ fontSize: "clamp(1.75rem, 4vw, 3rem)" }}
-          >
-            360 Performance
-          </h2>
-          <p className="mx-auto mt-5 max-w-2xl font-body text-sm leading-7 text-zinc-600 sm:text-base">
-            Built in a single Islamabad garage with one obsession — helping Pakistan's
-            car enthusiasts build machines that actually perform. We stock genuine,
-            hand-picked motorsports parts and ship them to driveways and workshops
-            across the country. We don't run a marketplace; we run a build shop.
-          </p>
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <TrustStrip />
         </div>
       </section>
 
@@ -447,53 +441,50 @@ export function Landing() {
       )}
 
       {/* ──────────────────────────────────────────────────────────────
-          TESTIMONIALS — reel-style tall cards on black
+          TESTIMONIALS — honest text reviews (rating + name + city), on black.
+          Previously these were Unsplash stock portraits badged "Build 01" under a
+          "Watch What People Say" heading, implying videos that don't exist and passing
+          strangers off as customer builds. The DB already carries rating + location.
          ──────────────────────────────────────────────────────────────*/}
+      {(testimonials === null || testimonials.length > 0) && (
       <section className="bg-black text-white">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <SectionTitle
             eyebrow="Testimonials"
-            title="Watch What People Say"
-            tagline="Real builds, real owners, real reviews from across Pakistan."
+            title="What Our Customers Say"
+            tagline="Real reviews from builders across Pakistan."
             invert
           />
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {testimonials
-              ? testimonials.map((t, i) => (
+              ? testimonials.slice(0, 4).map((t) => (
                   <figure
                     key={t.id}
-                    className="group relative isolate flex aspect-[9/16] flex-col justify-end overflow-hidden border border-white/10 bg-zinc-950"
+                    className="flex h-full flex-col justify-between gap-4 border border-white/10 bg-zinc-950 p-6"
                   >
-                    <ImageWithFallback
-                      src={REEL_PORTRAITS[i % REEL_PORTRAITS.length]}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      className="absolute inset-0 size-full object-cover opacity-80 transition-transform duration-700 group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
-                    <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 bg-black/60 px-2 py-1 font-heading text-[10px] font-bold uppercase tracking-[0.3em] text-white backdrop-blur">
-                      Build {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <div className="relative z-10 p-4">
-                      <p className="font-heading text-[10px] font-bold uppercase tracking-[0.4em] text-brand">
-                        360 Performance
-                      </p>
-                      <figcaption className="mt-1 font-heading text-xl font-bold uppercase leading-none tracking-tight text-white sm:text-2xl">
-                        {t.name.replace(/\.$/, "")}
-                      </figcaption>
-                      <p className="mt-2 line-clamp-2 font-body text-xs text-white/75">
-                        {t.quote}
-                      </p>
+                    <div>
+                      <Stars rating={t.rating} />
+                      <blockquote className="mt-4 font-body text-sm leading-6 text-white/85">
+                        “{t.quote}”
+                      </blockquote>
                     </div>
+                    <figcaption className="font-heading text-xs font-bold uppercase tracking-[0.2em] text-white">
+                      {t.name.replace(/\.$/, "")}
+                      {t.location && (
+                        <span className="mt-0.5 block font-body text-[11px] font-normal normal-case tracking-normal text-white/50">
+                          {t.location}
+                        </span>
+                      )}
+                    </figcaption>
                   </figure>
                 ))
               : Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="aspect-[9/16] w-full bg-white/10" />
+                  <Skeleton key={i} className="h-48 w-full bg-white/10" />
                 ))}
           </div>
         </div>
       </section>
+      )}
 
       {/* ──────────────────────────────────────────────────────────────
           BLOG PREVIEW — clean, light, three centered cards

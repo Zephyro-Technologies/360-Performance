@@ -25,6 +25,19 @@ export interface BlogPost {
   bodyMd?: string; // Markdown — rendered sanitized via @360/ui/Markdown
 }
 
+// Real social profiles. Also mirrored into the Organization JSON-LD `sameAs` in index.html
+// (which can't import from here).
+export const SOCIAL_LINKS = {
+  instagram: "https://www.instagram.com/beamerr_360/?hl=en",
+  facebook: "https://www.facebook.com/profile.php?id=61556915004933",
+  tiktok: "https://www.tiktok.com/@beamerr__360",
+  youtube: "https://www.youtube.com/@Beamerr_360",
+} as const;
+
+// Accepted payment methods, surfaced in the trust strip + shipping policy so a buyer doesn't have
+// to ask before messaging.
+export const PAYMENT_METHODS = ["Easypaisa", "JazzCash", "Bank Transfer"] as const;
+
 export const HERO = {
   eyebrow: "Pakistan's Trusted Motorsports Parts Store",
   title: "BUILT TO PERFORM.",

@@ -3,6 +3,7 @@ import { whatsappGeneralUrl } from "@360/lib/whatsapp";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { PageHeader } from "../components/PageHeader";
 import { useDocumentMeta } from "../lib/head";
+import { PAYMENT_METHODS } from "../data/content";
 
 export interface PolicySection {
   heading: string;
@@ -139,6 +140,16 @@ export function ShippingPolicy() {
               Shipping is quoted per order based on weight, destination and courier. We'll confirm the exact
               charge in the <WhatsAppLink>WhatsApp</WhatsAppLink> chat before anything is dispatched — you'll
               never be surprised by a cost after the fact.
+            </>
+          ),
+        },
+        {
+          heading: "Payment",
+          body: (
+            <>
+              We accept {PAYMENT_METHODS.slice(0, -1).join(", ")} and {PAYMENT_METHODS.at(-1)}. Payment
+              details are shared and confirmed in the <WhatsAppLink>WhatsApp</WhatsAppLink> chat once your
+              order is finalised — never entered on this site.
             </>
           ),
         },

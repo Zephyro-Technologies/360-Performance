@@ -35,8 +35,7 @@
       <meta name="twitter:image" content="%VITE_SITE_URL%/og-card.png" />
       <meta name="twitter:image:alt" content="360 Performance — genuine motorsports parts, shipped across Pakistan" />
       <!-- Site-wide Organization + WebSite structured data. Lives in the shell so it is present on
-           every prerendered page. sameAs (social profiles) is intentionally omitted until real
-           handles exist — a link to instagram.com's homepage is worse than none. -->
+           every prerendered page. sameAs mirrors SOCIAL_LINKS in src/app/data/content.ts. -->
       <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -48,6 +47,12 @@
             "url": "%VITE_SITE_URL%/",
             "logo": "%VITE_SITE_URL%/logo.svg",
             "areaServed": "PK",
+            "sameAs": [
+              "https://www.instagram.com/beamerr_360/",
+              "https://www.facebook.com/profile.php?id=61556915004933",
+              "https://www.tiktok.com/@beamerr__360",
+              "https://www.youtube.com/@Beamerr_360"
+            ],
             "contactPoint": {
               "@type": "ContactPoint",
               "contactType": "customer service",
