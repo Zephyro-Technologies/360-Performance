@@ -84,12 +84,28 @@ export function Catalogue() {
   const sort: SortOption = rawSort && rawSort in SORT_LABELS ? (rawSort as SortOption) : "newest";
   const page = Math.max(1, Math.floor(Number(searchParams.get("page") ?? "1")) || 1);
 
-  useDocumentMeta(category !== "all" ? categories.find((c) => c.slug === category)?.name : undefined);
+  const metaCategory = category !== "all" ? categories.find((c) => c.slug === category) : undefined;
 
   const [inStockOnly, setInStockOnly] = useState(false);
   const [result, setResult] = useState<CatalogueResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  useDocumentMeta(
+    metaCategory?.name ?? "Shop All Parts",
+    metaCategory
+      ? `Browse ${metaCategory.name} parts at 360 Performance — genuine, hand-picked, shipped across Pakistan. Order on WhatsApp.`
+      : "Browse the full 360 Performance catalogue — genuine performance parts for exhausts, cooling, fuelling, suspension and more, shipped across Pakistan.",
+    undefined,
+    {
+      // Canonicalise only what the page actually rendered: a coerced-away bogus category or an
+      // out-of-range page must not self-canonicalise. `result.page` is the page truly served.
+      canonicalParams: {
+        category: metaCategory?.slug ?? null,
+        page: result && result.page > 1 ? result.page : null,
+      },
+    },
+  );
 
   useEffect(() => {
     let alive = true;
@@ -307,7 +323,7 @@ export function Catalogue() {
             <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border py-16 text-center">
               <PackageX className="size-12 text-muted-foreground" />
               <div>
-                <h3>Couldn't load products</h3>
+                <h2 className="text-xl">Couldn't load products</h2>
                 <p className="mt-1 font-body text-sm text-muted-foreground">Something went wrong. Please try again.</p>
               </div>
               <Button variant="outline" onClick={() => window.location.reload()} className="font-heading uppercase tracking-[0.25em]">
@@ -384,7 +400,7 @@ export function Catalogue() {
             <div className="flex flex-col items-center justify-center gap-5 rounded-lg border border-dashed border-border py-16 text-center">
               <PackageX className="size-12 text-muted-foreground" />
               <div>
-                <h3>No products found</h3>
+                <h2 className="text-xl">No products found</h2>
                 <p className="mt-1 font-body text-sm text-muted-foreground">
                   Try a different filter, or jump into a popular category.
                 </p>

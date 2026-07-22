@@ -1,5 +1,8 @@
 import { Link } from "react-router";
 import { ChevronRight } from "lucide-react";
+import { absoluteUrl, siteOrigin } from "../lib/site";
+import { breadcrumbJsonLd } from "../lib/jsonld";
+import { JsonLd } from "./JsonLd";
 
 export interface Crumb {
   label: string;
@@ -7,8 +10,19 @@ export interface Crumb {
 }
 
 export function Breadcrumbs({ items }: { items: Crumb[] }) {
+  // BreadcrumbList so a search result shows Home › Catalogue › Cooling instead of a bare URL.
+  // The last crumb is the current page (no `to`); resolve it to the canonical current URL.
+  const ld = breadcrumbJsonLd(
+    items.map((it) => ({
+      name: it.label,
+      url: it.to
+        ? absoluteUrl(it.to)
+        : `${siteOrigin()}${typeof window !== "undefined" ? window.location.pathname : ""}`,
+    })),
+  );
   return (
     <nav aria-label="Breadcrumb" className="font-body text-sm">
+      <JsonLd data={ld} />
       <ol className="flex flex-wrap items-center gap-1.5">
         {items.map((item, i) => {
           const last = i === items.length - 1;

@@ -36,7 +36,8 @@ export function PolicyPage({
       <div className="mt-8 flex flex-col gap-8">
         {sections.map((s) => (
           <section key={s.heading}>
-            <h3 className="mb-2">{s.heading}</h3>
+            {/* h2, not h3: sits under the page h1 with no h2 between, so h3 skipped a level. */}
+            <h2 className="mb-2 text-xl">{s.heading}</h2>
             <div className="font-body text-sm leading-relaxed text-foreground/80">
               {s.body}
             </div>

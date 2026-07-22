@@ -11,6 +11,9 @@ import { type BlogPost } from "../data/content";
 import { formatDate } from "@360/lib/format";
 import { whatsappBlogUrl } from "@360/lib/whatsapp";
 import { useDocumentMeta } from "../lib/head";
+import { absoluteUrl } from "../lib/site";
+import { blogPostingJsonLd } from "../lib/jsonld";
+import { JsonLd } from "../components/JsonLd";
 
 export function BlogPostPage() {
   const { slug } = useParams();
@@ -26,7 +29,7 @@ export function BlogPostPage() {
       .catch(() => setMore([]));
   }, [slug]);
 
-  useDocumentMeta(post?.title, post?.excerpt);
+  useDocumentMeta(post?.title, post?.excerpt, post?.image || undefined);
 
   if (post === undefined) {
     return (
@@ -65,6 +68,19 @@ export function BlogPostPage() {
         />
       </div>
 
+      {/* The whole post is one <article>: the h1 and hero were previously siblings OUTSIDE it, so
+          article extractors and reader modes got the body without the title or image. */}
+      <article>
+        <JsonLd
+          data={blogPostingJsonLd({
+            title: post.title,
+            url: absoluteUrl(`/blog/${post.slug}`),
+            description: post.excerpt,
+            image: post.image || undefined,
+            datePublished: post.date,
+            author: post.author || undefined,
+          })}
+        />
       {/* Header */}
       <header className="mx-auto max-w-3xl px-4 pb-8 pt-6 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3 font-heading text-[11px] font-bold uppercase tracking-[0.35em] text-zinc-500">
@@ -104,7 +120,7 @@ export function BlogPostPage() {
       )}
 
       {/* Body */}
-      <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
         {post.excerpt && (
           <p className="font-body text-lg leading-8 text-black">{post.excerpt}</p>
         )}
@@ -142,6 +158,7 @@ export function BlogPostPage() {
             <ArrowLeft className="size-4" /> All News
           </Link>
         </div>
+      </div>
       </article>
 
       {/* More posts */}

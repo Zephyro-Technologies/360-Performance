@@ -6,7 +6,11 @@ import { useDocumentMeta } from "../lib/head";
 
 export function NotFound() {
   // Otherwise a dead URL keeps the previous route's title, description and canonical.
-  useDocumentMeta("Page Not Found", "That page doesn't exist. Browse the catalogue or search for a part.");
+  // noindex: a soft 404 serves HTTP 200 (SPA fallback), so without this a mistyped or dead URL
+  // would be indexable as a thin "not found" page.
+  useDocumentMeta("Page Not Found", "That page doesn't exist. Browse the catalogue or search for a part.", undefined, {
+    robots: "noindex, follow",
+  });
 
   return (
     <div className="relative flex min-h-[70vh] items-center justify-center overflow-hidden bg-black px-4 text-white">

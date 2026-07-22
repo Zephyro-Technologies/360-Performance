@@ -15,7 +15,10 @@ export function Blog() {
   const [posts, setPosts] = useState<BlogPost[] | null>(null);
   const [error, setError] = useState(false);
 
-  useDocumentMeta("News");
+  useDocumentMeta(
+    "News",
+    "Build notes, part guides and straight talk on the Pakistani motorsports scene — from the 360 Performance garage.",
+  );
 
   useEffect(() => {
     getBlogPosts().then(setPosts).catch(() => setError(true));

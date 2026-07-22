@@ -77,7 +77,7 @@ const esc = (s) =>
     .replace(/"/g, "&quot;");
 
 /** Rewrite the <head> of the shell for one route. */
-function render(shell, { title, description, url, image, jsonLd, robots }) {
+function render(shell, { title, description, url, image, imageAlt, jsonLd, robots, ogType, extraMeta }) {
   let html = shell;
   const set = (re, replacement) => {
     html = re.test(html) ? html.replace(re, replacement) : html;
@@ -98,10 +98,16 @@ function render(shell, { title, description, url, image, jsonLd, robots }) {
     `<meta name="twitter:description" content="${esc(description)}" />`,
   );
   set(/<meta name="twitter:image" content="[^"]*"\s*\/?>/, `<meta name="twitter:image" content="${esc(image)}" />`);
+  if (imageAlt) {
+    set(/<meta property="og:image:alt" content="[^"]*"\s*\/?>/, `<meta property="og:image:alt" content="${esc(imageAlt)}" />`);
+    set(/<meta name="twitter:image:alt" content="[^"]*"\s*\/?>/, `<meta name="twitter:image:alt" content="${esc(imageAlt)}" />`);
+  }
+  if (ogType) set(/<meta property="og:type" content="[^"]*"\s*\/?>/, `<meta property="og:type" content="${esc(ogType)}" />`);
   if (robots) set(/<meta name="robots" content="[^"]*"\s*\/?>/, `<meta name="robots" content="${esc(robots)}" />`);
 
   const extra =
     `\n    <link rel="canonical" href="${esc(url)}" />` +
+    (extraMeta ? extraMeta.map((m) => `\n    ${m}`).join("") : "") +
     // Escape "<" exactly as components/JsonLd.tsx does, so an author-written product name or
     // description containing "</script>" cannot terminate the head of the prerendered page —
     // the one file social scrapers and crawlers actually read.
@@ -109,6 +115,23 @@ function render(shell, { title, description, url, image, jsonLd, robots }) {
       ? `\n    <script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, "\\u003c")}</script>`
       : "");
   return html.replace("</head>", `${extra}\n  </head>`);
+}
+
+// Grounded Offer enrichment — MUST match src/app/lib/jsonld.ts offerExtras(). Real values only:
+// new genuine parts, the 7-day returns window from the returns policy, us as seller.
+// priceValidUntil is the conventional far-future date that silences the "no expiry" warning.
+function offerExtras() {
+  return {
+    itemCondition: "https://schema.org/NewCondition",
+    priceValidUntil: `${new Date().getFullYear() + 1}-12-31`,
+    seller: { "@type": "Organization", name: BRAND },
+    hasMerchantReturnPolicy: {
+      "@type": "MerchantReturnPolicy",
+      applicableCountry: "PK",
+      returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+      merchantReturnDays: 7,
+    },
+  };
 }
 
 async function emit(route, html) {
@@ -149,6 +172,13 @@ for (const p of products) {
       description,
       url,
       image,
+      imageAlt: p.name,
+      ogType: "product",
+      // Facebook/WhatsApp render a price line under the title from these.
+      extraMeta: [
+        `<meta property="product:price:amount" content="${esc(String(price))}" />`,
+        `<meta property="product:price:currency" content="PKR" />`,
+      ],
       jsonLd: {
         "@context": "https://schema.org",
         "@type": "Product",
@@ -166,31 +196,117 @@ for (const p of products) {
           // Fallback matches data/api.ts, which also defaults an unknown value to made-to-order.
           // Claiming InStock for something we cannot classify is the expensive way to be wrong.
           availability: AVAIL[p.availability] ?? "https://schema.org/MadeToOrder",
+          ...offerExtras(),
         },
       },
     }),
   );
 }
 
+// ---- static routes ------------------------------------------------------------------------
+// Without these, /catalogue, /blog and the policy pages fall through to the SPA shell and preview
+// as the homepage — and category links (?category=…), which are exactly what a seller pastes into
+// a chat, resolve to /catalogue on Cloudflare (query ignored for asset matching) and so inherit
+// the catalogue page's meta rather than the homepage's. Titles/descriptions MUST match the runtime
+// pages (Catalogue.tsx, Blog.tsx, PolicyPage.tsx) so scrapers and JS crawlers agree.
+const STATIC_PAGES = [
+  {
+    route: "catalogue",
+    title: `Shop All Parts | ${BRAND}`,
+    description:
+      "Browse the full 360 Performance catalogue — genuine performance parts for exhausts, cooling, fuelling, suspension and more, shipped across Pakistan.",
+  },
+  {
+    route: "blog",
+    title: `News | ${BRAND}`,
+    description:
+      "Build notes, part guides and straight talk on the Pakistani motorsports scene — from the 360 Performance garage.",
+  },
+  {
+    route: "policies/returns",
+    title: `Return & Refund Policy | ${BRAND}`,
+    description:
+      "We want you running the right parts. If something isn't right, here's how returns and refunds work at 360 Performance.",
+  },
+  {
+    route: "policies/shipping",
+    title: `Shipping Policy | ${BRAND}`,
+    description:
+      "360 Performance is an order-based store shipping nationwide across Pakistan. Here's what to expect after you place an order.",
+  },
+  {
+    route: "policies/privacy",
+    title: `Privacy Policy | ${BRAND}`,
+    description:
+      "Your trust matters. This policy explains what data 360 Performance collects, how we use it, and the rights you have over it.",
+  },
+];
+
+for (const s of STATIC_PAGES) {
+  await emit(s.route, render(shell, { title: s.title, description: s.description, url: `${SITE}/${s.route}` }));
+}
+
+// A noindex 404 for hosts that serve it (Cloudflare's SPA fallback serves index.html instead, so
+// the runtime NotFound page also sets noindex — this covers the rest).
+await writeFile(
+  path.join(DIST, "404.html"),
+  render(shell, {
+    title: `Page Not Found | ${BRAND}`,
+    description: "That page doesn't exist. Browse the catalogue or search for a part.",
+    url: `${SITE}/404`,
+    robots: "noindex, follow",
+  }),
+  "utf8",
+);
+
 // ---- blog ---------------------------------------------------------------------------------
 const posts = await q("blog_posts", "select=slug,title,excerpt,hero_image,published_at&published=eq.true");
 
 for (const b of posts) {
   const url = `${SITE}/blog/${b.slug}`;
-  const image = publicImage("blog-images", b.hero_image) || `${SITE}/og-card.png`;
+  const hasHero = !!publicImage("blog-images", b.hero_image);
+  const image = hasHero ? publicImage("blog-images", b.hero_image) : `${SITE}/og-card.png`;
   const description = b.excerpt || `${b.title} — from the ${BRAND} garage.`;
-  const html = render(shell, { title: `${b.title} | ${BRAND}`, description, url, image }).replace(
-    '<meta property="og:type" content="website" />',
-    '<meta property="og:type" content="article" />',
+  await emit(
+    `blog/${b.slug}`,
+    render(shell, {
+      title: `${b.title} | ${BRAND}`,
+      description,
+      url,
+      image,
+      imageAlt: b.title,
+      ogType: "article",
+      jsonLd: {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        headline: b.title,
+        mainEntityOfPage: url,
+        author: { "@type": "Organization", name: BRAND },
+        publisher: { "@type": "Organization", name: BRAND },
+        ...(description ? { description } : {}),
+        ...(hasHero ? { image: [image] } : {}),
+        ...(b.published_at ? { datePublished: b.published_at } : {}),
+      },
+    }),
   );
-  await emit(`blog/${b.slug}`, html);
 }
 
+// ---- categories (for the sitemap only) ----------------------------------------------------
+// Top-level category slugs are indexable per lib/head.ts (?category= is a canonical param), and
+// they are the URLs sellers paste into chats. They are query-string variants of /catalogue, not
+// their own prerendered files (that would need a path-based route), but they belong in the sitemap.
+const categories = await q("categories", "select=slug,parent_id");
+const parentCategorySlugs = categories.filter((c) => c.parent_id === null).map((c) => c.slug);
+
 // ---- sitemap + robots ---------------------------------------------------------------------
-const staticRoutes = ["", "/catalogue", "/blog", "/policies/returns", "/policies/shipping", "/policies/privacy"];
 const urls = [
-  ...staticRoutes.map((r) => ({ loc: `${SITE}${r || "/"}`, priority: r === "" ? "1.0" : "0.7" })),
-  ...products.map((p) => ({ loc: `${SITE}/product/${p.slug}`, priority: "0.9" })),
+  { loc: `${SITE}/`, priority: "1.0" },
+  // A hub page outranks the individual products beneath it.
+  { loc: `${SITE}/catalogue`, priority: "0.9" },
+  ...parentCategorySlugs.map((slug) => ({ loc: `${SITE}/catalogue?category=${slug}`, priority: "0.8" })),
+  { loc: `${SITE}/blog`, priority: "0.7" },
+  ...["returns", "shipping", "privacy"].map((p) => ({ loc: `${SITE}/policies/${p}`, priority: "0.5" })),
+  ...products.map((p) => ({ loc: `${SITE}/product/${p.slug}`, priority: "0.9", lastmod: p.created_at?.slice(0, 10) })),
   ...posts.map((b) => ({ loc: `${SITE}/blog/${b.slug}`, priority: "0.6", lastmod: b.published_at?.slice(0, 10) })),
 ];
 
@@ -209,10 +325,13 @@ await writeFile(
 
 await writeFile(
   path.join(DIST, "robots.txt"),
-  `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`,
+  // Disallow the free-text search and sort permutations: they are unbounded URL variants that
+  // canonicals collapse only AFTER each is crawled, wasting crawl budget on duplicates.
+  `User-agent: *\nAllow: /\nDisallow: /*?q=\nDisallow: /*?sort=\n\nSitemap: ${SITE}/sitemap.xml\n`,
   "utf8",
 );
 
 console.log(
-  `[prerender] ${products.length} products, ${posts.length} blog posts, sitemap (${urls.length} urls) + robots.txt`,
+  `[prerender] ${products.length} products, ${posts.length} blog posts, ${STATIC_PAGES.length} static pages, ` +
+    `${parentCategorySlugs.length} categories in sitemap (${urls.length} urls) + robots.txt + 404.html`,
 );
