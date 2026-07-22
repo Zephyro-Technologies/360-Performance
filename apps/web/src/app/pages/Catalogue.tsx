@@ -252,7 +252,7 @@ export function Catalogue() {
         <SearchBar />
       </div>
 
-      <div className="mt-8 flex gap-8">
+      <div className="mt-5 flex gap-8">
         {/* Sidebar (desktop) */}
         {/* Shown from md, not lg: at 768–1023px the page previously had 1000px of width and
             still no sidebar, so the phone layout rendered at tablet size. */}
