@@ -19,6 +19,15 @@ function renderPicker(onChange = vi.fn(), period = DEFAULT_PERIOD) {
   return onChange;
 }
 
+// react-day-picker v9/v10 renders each day as a <button> inside <td role="gridcell" data-day="…">,
+// and the button's accessible name is the full localized date (not the bare number). So the disabled
+// state and the click target both live on the inner button — reach it by the cell's data-day.
+const dayButton = (iso: string) => {
+  const cell = document.querySelector<HTMLElement>(`[data-day="${iso}"]`);
+  if (!cell) throw new Error(`no calendar cell for ${iso}`);
+  return within(cell).getByRole("button");
+};
+
 test("the trigger shows the real dates, not just a month name", async () => {
   renderPicker();
   const trigger = screen.getByRole("button", { name: /reporting period/i });
@@ -73,16 +82,9 @@ test("picking two days on the calendar reports ISO strings for the days clicked"
   const onChange = renderPicker(vi.fn(), resolvePreset("thisMonth", TODAY, BOUNDS));
   await user.click(screen.getByRole("button", { name: /reporting period/i }));
 
-  // Two months render side by side, so each day number appears twice; only July's is selectable
-  // (August is past the data bound, hence disabled). Pick the live one.
-  const liveDay = async (n: string) => {
-    const cells = await screen.findAllByRole("gridcell", { name: n });
-    const live = cells.filter((c) => !c.hasAttribute("disabled"));
-    expect(live).toHaveLength(1);
-    return live[0];
-  };
-  await user.click(await liveDay("15"));
-  await user.click(await liveDay("16"));
+  // The window is clamped to the data span, so the days are unambiguous — click them by date.
+  await user.click(dayButton("2026-07-15"));
+  await user.click(dayButton("2026-07-16"));
 
   expect(onChange).toHaveBeenCalled();
   expect(onChange.mock.calls.at(-1)![0]).toMatchObject({ start: "2026-07-15", end: "2026-07-16", preset: "custom" });
@@ -94,11 +96,9 @@ test("the calendar is clamped to the span of real data", async () => {
   await user.click(screen.getByRole("button", { name: /reporting period/i }));
 
   // 13 Jul is one day before bounds.min (14 Jul) — there is nothing to report there, so it's shut.
-  const thirteenth = (await screen.findAllByRole("gridcell", { name: "13" }))[0];
-  expect(thirteenth.hasAttribute("disabled")).toBe(true);
+  expect(dayButton("2026-07-13").hasAttribute("disabled")).toBe(true);
   // 14 Jul, the first day with activity, is open.
-  const fourteenth = (await screen.findAllByRole("gridcell", { name: "14" }))[0];
-  expect(fourteenth.hasAttribute("disabled")).toBe(false);
+  expect(dayButton("2026-07-14").hasAttribute("disabled")).toBe(false);
 });
 
 test("no ref warnings from the popover trigger", async () => {

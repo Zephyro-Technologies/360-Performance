@@ -106,14 +106,20 @@ export function PeriodPicker({
               );
             })}
           </div>
+          {/* v9/v10 dropped fromDate/toDate: startMonth/endMonth bound navigation, and the
+              disabled matchers bound what's selectable — together they reproduce the old clamp. */}
           <Calendar
             mode="range"
             numberOfMonths={isMobile ? 1 : 2}
             defaultMonth={isoToLocalDate(period.end)}
             selected={draft ?? { from: isoToLocalDate(period.start), to: isoToLocalDate(period.end) }}
             onSelect={onSelectRange}
-            fromDate={bounds ? isoToLocalDate(bounds.min) : undefined}
-            toDate={isoToLocalDate(bounds ? maxISO(bounds.max, today) : today)}
+            startMonth={bounds ? isoToLocalDate(bounds.min) : undefined}
+            endMonth={isoToLocalDate(bounds ? maxISO(bounds.max, today) : today)}
+            disabled={[
+              ...(bounds ? [{ before: isoToLocalDate(bounds.min) }] : []),
+              { after: isoToLocalDate(bounds ? maxISO(bounds.max, today) : today) },
+            ]}
           />
         </div>
       </PopoverContent>

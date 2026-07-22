@@ -281,7 +281,7 @@ export function Analytics() {
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#999" minTickGap={24} />
                 <YAxis tickFormatter={(v) => formatCompact(v)} tick={{ fontSize: 11 }} stroke="#999" width={56} />
                 <Tooltip
-                  formatter={(v: number) => [formatPKR(v), "Sales"]}
+                  formatter={(v) => [formatPKR(Number(v)), "Sales"]}
                   contentStyle={{ borderRadius: 6, border: "1px solid #e5e5e5", fontSize: 12 }}
                   labelFormatter={(l) => `On ${l}`}
                 />

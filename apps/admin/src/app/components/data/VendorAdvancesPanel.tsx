@@ -175,7 +175,7 @@ export function VendorAdvancesPanel() {
                       />
                       <YAxis tickFormatter={(v) => formatCompact(v)} tick={{ fontSize: 11 }} stroke="#999" width={64} />
                       <Tooltip
-                        formatter={(value: number, name) => [formatPKR(Number(value)), name as string]}
+                        formatter={(value, name) => [formatPKR(Number(value)), String(name)]}
                         labelFormatter={(t) => formatDate(new Date(Number(t)).toISOString().slice(0, 10))}
                         contentStyle={{ borderRadius: 6, border: "1px solid #e5e5e5", fontSize: 12 }}
                       />

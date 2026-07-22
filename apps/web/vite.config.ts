@@ -9,6 +9,10 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    // Force a single React instance. @360/ui is excluded from dep-optimization (below), so its
+    // Radix deps get pre-bundled separately and, without this, Vite can hand them a second copy of
+    // React — which surfaces as "Invalid hook call / useState of null" the moment a Radix hook runs.
+    dedupe: ['react', 'react-dom'],
   },
 
   // Internal workspace packages ship TS/TSX source — let Vite transpile them
@@ -19,12 +23,19 @@ export default defineConfig({
   },
 
   // Split vendors into cacheable chunks; routes are lazy-loaded (see App.tsx).
+  // Vite 8 / Rolldown dropped the object form of manualChunks — the function form works on both
+  // bundlers. The greedy match resolves the real package name even through pnpm's nested
+  // node_modules (…/.pnpm/react@19/node_modules/react/…).
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ['react', 'react-dom', 'react-router'],
-          supabase: ['@supabase/supabase-js'],
+        manualChunks(id) {
+          const m = id.replace(/\\/g, '/').match(/.*\/node_modules\/(@[^/]+\/[^/]+|[^/]+)\//)
+          if (!m) return undefined
+          const pkg = m[1]
+          if (['react', 'react-dom', 'react-router', 'scheduler'].includes(pkg)) return 'react'
+          if (pkg.startsWith('@supabase/')) return 'supabase'
+          return undefined
         },
       },
     },

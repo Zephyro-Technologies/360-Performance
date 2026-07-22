@@ -26,7 +26,11 @@ export default tseslint.config(
       'react-hooks': reactHooks,
     },
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      // eslint-plugin-react-hooks v7's "recommended" pulls in the React-Compiler-era rules
+      // (set-state-in-effect, component-hook-factories, …) as errors — a linting-policy change that
+      // arrived with the version bump, not a set of real bugs. Keep the two classic rules this code
+      // was written against; adopting the stricter set is a deliberate follow-up, not an upgrade.
+      'react-hooks/rules-of-hooks': 'error',
       'no-undef': 'off',
       '@typescript-eslint/no-unused-vars': [
         'warn',
